@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -19,8 +19,12 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
-import { useVideoStore, useVideoState, useIsVideoPlaying, useIsVideoCached } from '../../store/videoStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useVideoStore, useVideoState, useIsVideoPlaying, useIsVideoCached, useVideoProgress, useVideoDuration } from '../../store/videoStore';
 import { enhancedVideoCache } from '../../utils/enhancedVideoCache';
+import VideoProgressBar from './VideoProgressBar';
+import WatchNowButton from '../common/WatchNowButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -45,7 +49,9 @@ interface EnhancedVideoPlayerProps {
   onEnd: () => void;
   onShare: (item: VideoItem) => void;
   onLike: (itemId: string) => void;
+  onWatchNow?: (item: VideoItem) => void; // Add Watch Now handler
   viewHeight: number;
+  isScrolling?: boolean; // Add scrolling state prop
 }
 
 const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
@@ -55,27 +61,41 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
   onEnd,
   onShare,
   onLike,
+  onWatchNow,
   viewHeight,
+  isScrolling = false, // Default to false
 }) => {
   const videoRef = useRef<any>(null);
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  
   const { 
     setVideoPlaying, 
     setVideoProgress, 
     setVideoCached, 
     updateVideoState,
-    setControllerVisible 
+    setControllerVisible,
   } = useVideoStore();
 
   // Get video state from store
   const videoState = useVideoState(item.id);
   const isPlaying = useIsVideoPlaying(item.id);
   const isCached = useIsVideoCached(item.id);
+  const progress = useVideoProgress(item.id);
+  const duration = useVideoDuration(item.id);
+
+  // Local state for pause button visibility
+  const [showPauseButton, setShowPauseButton] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animated values
   const progressValue = useSharedValue(0);
   const opacityValue = useSharedValue(1);
   const scaleValue = useSharedValue(1);
   const controllerOpacity = useSharedValue(1);
+  const pauseButtonOpacity = useSharedValue(0); // Start hidden
+
+
 
   // Memoized video source
   const videoSource = useMemo(() => ({
@@ -86,22 +106,66 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
       'User-Agent': 'RocketReels/1.0',
     },
     bufferConfig: {
-      minBufferMs: 1000,
-      maxBufferMs: 5000,
-      bufferForPlaybackMs: 500,
-      bufferForPlaybackAfterRebufferMs: 1000,
-      backBufferDurationMs: 3000,
-      maxHeapAllocationPercent: 0.3,
+      minBufferMs: 500, // Reduced for faster start
+      maxBufferMs: 3000, // Reduced for faster response
+      bufferForPlaybackMs: 200, // Reduced for immediate playback
+      bufferForPlaybackAfterRebufferMs: 500, // Reduced for faster recovery
+      backBufferDurationMs: 2000, // Reduced for memory efficiency
+      maxHeapAllocationPercent: 0.2, // Reduced for better performance
     },
     minLoadRetryCount: 3,
     shouldCache: true,
   }), [videoState?.cachedPath, item.videoUrl]);
 
+  // Function to show pause button with auto-hide
+  const showPauseButtonWithTimer = useCallback(() => {
+    // Clear existing timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+
+    // Show pause button
+    setShowPauseButton(true);
+    pauseButtonOpacity.value = withTiming(1, { duration: 200 });
+
+    // Auto-hide after 3 seconds
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowPauseButton(false);
+      pauseButtonOpacity.value = withTiming(0, { duration: 300 });
+    }, 3000);
+  }, [pauseButtonOpacity]);
+
+  // Function to hide pause button immediately
+  const hidePauseButton = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setShowPauseButton(false);
+    pauseButtonOpacity.value = withTiming(0, { duration: 200 });
+  }, [pauseButtonOpacity]);
+
+  // Handle scrolling state changes
+  useEffect(() => {
+    if (isScrolling) {
+      hidePauseButton();
+    }
+  }, [isScrolling, hidePauseButton]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Preload video when component mounts
   useEffect(() => {
     const preloadVideo = async () => {
       try {
-        const cachedPath = await enhancedVideoCache.cacheVideo(item.videoUrl, item.id, 'low');
+        const cachedPath = await enhancedVideoCache.cacheVideo(item.videoUrl, item.id, 'high'); // High priority
         if (cachedPath !== item.videoUrl) {
           setVideoCached(item.id, cachedPath);
         }
@@ -113,16 +177,30 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     preloadVideo();
   }, [item.id, item.videoUrl, setVideoCached]);
 
-  // Handle visibility changes
+  // Start playing immediately when component mounts if visible
   useEffect(() => {
     if (isVisible) {
+      // Immediate play without any delay
       setVideoPlaying(item.id, true);
-      controllerOpacity.value = withTiming(1, { duration: 300 });
-    } else {
-      setVideoPlaying(item.id, false);
-      controllerOpacity.value = withTiming(0, { duration: 300 });
     }
-  }, [isVisible, item.id, setVideoPlaying, controllerOpacity]);
+  }, [isVisible, item.id, setVideoPlaying]);
+
+  // Handle visibility changes with optimized timing
+  useEffect(() => {
+    if (isVisible) {
+      // Start playing immediately when visible
+      setVideoPlaying(item.id, true);
+      controllerOpacity.value = withTiming(1, { duration: 50 });
+    } else {
+      // Pause when not visible with minimal delay to prevent flickering
+      setTimeout(() => {
+        setVideoPlaying(item.id, false);
+      }, 30);
+      controllerOpacity.value = withTiming(0, { duration: 50 });
+      // Hide pause button when not visible
+      hidePauseButton();
+    }
+  }, [isVisible, item.id, setVideoPlaying, controllerOpacity, hidePauseButton]);
 
   // Video event handlers
   const onLoad = useCallback(({ duration }: { duration: number }) => {
@@ -161,11 +239,9 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     setControllerVisible(true);
     controllerOpacity.value = withTiming(1, { duration: 200 });
     
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-      controllerOpacity.value = withTiming(0, { duration: 300 });
-    }, 3000);
-  }, [setControllerVisible, controllerOpacity]);
+    // Show pause button on tap
+    showPauseButtonWithTimer();
+  }, [setControllerVisible, controllerOpacity, showPauseButtonWithTimer]);
 
   const handlePlayPause = useCallback(() => {
     const newPlayingState = !isPlaying;
@@ -175,7 +251,10 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     scaleValue.value = withSpring(0.8, {}, () => {
       scaleValue.value = withSpring(1);
     });
-  }, [isPlaying, item.id, setVideoPlaying, scaleValue]);
+
+    // Show pause button when manually toggling
+    showPauseButtonWithTimer();
+  }, [isPlaying, item.id, setVideoPlaying, scaleValue, showPauseButtonWithTimer]);
 
   const handleLikePress = useCallback(() => {
     onLike(item.id);
@@ -218,8 +297,16 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     };
   });
 
+  const pauseButtonStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: pauseButtonOpacity.value,
+      transform: [{ scale: scaleValue.value }],
+    };
+  });
+
   return (
-    <View style={[styles.container, { height: viewHeight }]}>
+    <View style={styles.container}>
       {/* Video Component */}
       <TouchableOpacity
         style={styles.videoContainer}
@@ -230,9 +317,9 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
           ref={videoRef}
           style={styles.video}
           source={videoSource}
-          repeat={false}
+          repeat={true}
           resizeMode="cover"
-          paused={!isVisible || !isPlaying}
+          paused={!isPlaying} // Depend on isPlaying state
           controls={false}
           playInBackground={false}
           poster={item.thumbnail}
@@ -242,19 +329,15 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
           onLoad={onLoad}
           onBuffer={onBuffer}
           onProgress={onProgress}
-          onEnd={handleVideoEnd}
           playWhenInactive={false}
-          progressUpdateInterval={1000}
+          progressUpdateInterval={500} // Reduced for smoother progress
           reportBandwidth
           onReadyForDisplay={onReadyForDisplay}
           ignoreSilentSwitch="ignore"
-          automaticallyWaitsToMinimizeStalling={true}
+          automaticallyWaitsToMinimizeStalling={false} // Disabled for immediate playback
         />
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <Animated.View style={[styles.progressBar, progressBarStyle]} />
-        </View>
+
 
         {/* Loading Indicator */}
         {videoState?.isBuffering && (
@@ -271,10 +354,9 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Controls Overlay */}
-      <Animated.View style={[styles.controls, controllerStyle]}>
-        {/* Play/Pause Button */}
-        <Animated.View style={[styles.playButton, playButtonStyle]}>
+      {/* Play/Pause Button - Only show when showPauseButton is true */}
+      {showPauseButton && (
+        <Animated.View style={[styles.playButton, pauseButtonStyle]}>
           <TouchableOpacity
             style={styles.playButtonTouchable}
             onPress={handlePlayPause}
@@ -283,11 +365,14 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
             <Icon
               name={isPlaying ? "pause" : "play-arrow"}
               color="#ffffff"
-              size={40}
+              size={50}
             />
           </TouchableOpacity>
         </Animated.View>
+      )}
 
+      {/* Bottom Overlay - All UI elements */}
+      <View style={styles.bottomOverlay}>
         {/* Content Info */}
         <View style={styles.contentInfo}>
           <Text style={styles.title} numberOfLines={2}>
@@ -340,16 +425,34 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <View style={styles.iconContainer}>
-              <Icon name="info" color="#ffffff" size={28} />
-            </View>
-            <Text style={styles.actionText}>
-              Info
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+                      {onWatchNow && (
+                        <TouchableOpacity 
+                          style={styles.actionButton} 
+                          onPress={() => onWatchNow(item)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.iconContainer}>
+                            <WatchNowButton 
+                              onPress={() => onWatchNow(item)}
+                              size="small"
+                            />
+                          </View>
+                          <Text style={styles.actionText}>
+                            Watch Now
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+          </View>
+
+        {/* Progress Bar */}
+        <VideoProgressBar
+          progress={progress}
+          duration={duration}
+          isVisible={isVisible}
+          isPlaying={isPlaying}
+          isBuffering={videoState?.isBuffering}
+        />
+      </View>
     </View>
   );
 };
@@ -357,29 +460,22 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: screenWidth,
+    height: screenHeight,
     backgroundColor: '#000000',
   },
   videoContainer: {
-    flex: 1,
+    width: screenWidth,
+    height: screenHeight,  
     backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   video: {
     width: screenWidth,
-    height: '100%',
-  },
-  progressContainer: {
+    height: screenHeight,
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 10,
   },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#3b82f6',
-  },
+
   loadingContainer: {
     position: 'absolute',
     top: 0,
@@ -398,6 +494,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 40, // Increased padding to ensure progress bar is visible
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
   controls: {
     position: 'absolute',
     top: 0,
@@ -410,14 +515,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -30 }, { translateY: -30 }],
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    transform: [{ translateX: -35 }, { translateY: -35 }],
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   playButtonTouchable: {
     width: '100%',
@@ -426,10 +533,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contentInfo: {
-    position: 'absolute',
-    bottom: 120,
-    left: 20,
-    right: 100,
+    marginBottom: 10,
+    paddingRight: 80, // Space for action buttons
+    paddingTop: 10
   },
   title: {
     fontSize: 18,
@@ -459,9 +565,10 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     position: 'absolute',
-    bottom: 120,
-    right: 20,
+    bottom: 16,
+    right: 16,
     alignItems: 'center',
+    marginBottom: 20
   },
   actionButton: {
     alignItems: 'center',

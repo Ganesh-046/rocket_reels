@@ -298,17 +298,16 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   }, [isFocused, cacheVideo]);
 
   const onEnd = useCallback(() => {
+    // Don't auto-scroll - let user control scrolling manually
+    // Just update the current video state
     const nextIndex = state.currentIndex + 1;
     if (nextIndex < shortsData.length) {
-      setState(prev => ({ ...prev, playPause: false, currentIndex: nextIndex }));
-
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: true
-        });
-        setState(prev => ({ ...prev, playPause: true }));
-      });
+      setState(prev => ({ 
+        ...prev, 
+        playPause: false, 
+        currentIndex: nextIndex 
+      }));
+      // Don't auto-scroll - let user scroll manually
     }
   }, [state.currentIndex, shortsData.length]);
 
@@ -381,13 +380,8 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   };
 
   const onScrollToIndexFailed = (info: any) => {
-    const wait = new Promise(resolve => setTimeout(resolve, 500));
-    wait.then(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true,
-      });
-    });
+    // Don't auto-scroll on failure - let user control scrolling
+    console.log('Scroll to index failed:', info.index);
   };
 
   const ListEmptyComponent = () => (
@@ -438,7 +432,7 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
         renderItem={renderVideoItem}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
-        pagingEnabled
+        pagingEnabled={false}
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
         scrollEventThrottle={16}
@@ -458,11 +452,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
             colors={["#3b82f6"]}
           />
         }
-        onScrollToIndexFailed={onScrollToIndexFailed}
-        maintainVisibleContentPosition={{
-          minIndexForVisible: 0,
-          autoscrollToTopThreshold: 10,
-        }}
         ListEmptyComponent={ListEmptyComponent}
       />
     </View>
@@ -549,7 +538,7 @@ const ShortVideoPlayer = ({
           minLoadRetryCount: 3,
           shouldCache: true,
         }}
-        repeat={false}
+        repeat={true} // Enable repeat for shorts
         resizeMode="cover"
         paused={!play || !videoReady}
         controls={false}
@@ -560,7 +549,6 @@ const ShortVideoPlayer = ({
         onLoad={load}
         onBuffer={onBuffer}
         onProgress={onProgress}
-        onEnd={onEnd}
         playWhenInactive={false}
         progressUpdateInterval={1000}
         reportBandwidth
@@ -672,16 +660,26 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 10,
+    bottom: 80, // Position above bottom tab bar
+    left: 16,
+    right: 16,
+    height: 4, // Thicker for better visibility
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    zIndex: 99999,
+    borderRadius: 2,
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ffffff',
+    borderRadius: 2,
+    shadowColor: '#ffffff',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 5,
   },
   loadingContainer: {
     position: 'absolute',
@@ -716,7 +714,7 @@ const styles = StyleSheet.create({
   },
   contentInfo: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 100, // Position above the progress bar (80 + 20 spacing)
     left: 20,
     right: 100,
   },
@@ -739,7 +737,7 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 100, // Position above the progress bar (80 + 20 spacing)
     right: 20,
     alignItems: 'center',
   },

@@ -15,6 +15,10 @@ interface VideoState {
   isCached: boolean;
   cachedPath: string | null;
   error: string | null;
+  isVisible: boolean;
+  isLiked: boolean;
+  lastAccessed: number;
+  repeat: boolean; // Add repeat functionality
 }
 
 interface VideoStore {
@@ -35,7 +39,9 @@ interface VideoStore {
   updateVideoState: (id: string, updates: Partial<VideoState>) => void;
   setVideoPlaying: (id: string, isPlaying: boolean) => void;
   setVideoProgress: (id: string, progress: number) => void;
+  resetVideoProgress: (id: string) => void;
   setVideoCached: (id: string, cachedPath: string) => void;
+  setVideoRepeat: (id: string, repeat: boolean) => void; // Add repeat action
   addPreloadedVideo: (id: string) => void;
   removePreloadedVideo: (id: string) => void;
   setControllerVisible: (visible: boolean) => void;
@@ -82,6 +88,10 @@ export const useVideoStore = create<VideoStore>()(
           isCached: false,
           cachedPath: null,
           error: null,
+          isVisible: false,
+          isLiked: false,
+          lastAccessed: Date.now(),
+          repeat: false, // Default to no repeat
         };
         
         newVideos.set(id, { ...currentState, ...updates });
@@ -90,11 +100,38 @@ export const useVideoStore = create<VideoStore>()(
     },
     
     setVideoPlaying: (id: string, isPlaying: boolean) => {
-      get().updateVideoState(id, { isPlaying });
+      // Update immediately without batching for faster response
+      set((state) => {
+        const newVideos = new Map(state.videos);
+        const currentState = newVideos.get(id) || {
+          id,
+          isPlaying: false,
+          progress: 0,
+          duration: 0,
+          isReady: false,
+          isBuffering: false,
+          isCached: false,
+          cachedPath: null,
+          error: null,
+          isVisible: false,
+          isLiked: false,
+          lastAccessed: Date.now(),
+          repeat: false, // Default to no repeat
+        };
+        
+        newVideos.set(id, { ...currentState, isPlaying, lastAccessed: Date.now() });
+        return { videos: newVideos };
+      });
     },
     
     setVideoProgress: (id: string, progress: number) => {
-      get().updateVideoState(id, { progress });
+      // Validate progress value
+      const validProgress = Math.max(0, Math.min(100, progress));
+      get().updateVideoState(id, { progress: validProgress });
+    },
+    
+    resetVideoProgress: (id: string) => {
+      get().updateVideoState(id, { progress: 0 });
     },
     
     setVideoCached: (id: string, cachedPath: string) => {
@@ -103,6 +140,10 @@ export const useVideoStore = create<VideoStore>()(
         cachedPath,
         error: null 
       });
+    },
+    
+    setVideoRepeat: (id: string, repeat: boolean) => {
+      get().updateVideoState(id, { repeat });
     },
     
     addPreloadedVideo: (id: string) => {
@@ -159,6 +200,13 @@ export const useIsVideoCached = (id: string) => useVideoStore((state) => state.g
 export const useIsVideoPreloaded = (id: string) => useVideoStore((state) => state.isVideoPreloaded(id));
 export const useControllerVisible = () => useVideoStore((state) => state.isControllerVisible);
 export const useIsLoading = () => useVideoStore((state) => state.isLoading);
+
+// Progress selectors
+export const useVideoProgress = (id: string) => useVideoStore((state) => state.getVideoState(id)?.progress ?? 0);
+export const useVideoDuration = (id: string) => useVideoStore((state) => state.getVideoState(id)?.duration ?? 0);
+
+// Repeat selector
+export const useVideoRepeat = (id: string) => useVideoStore((state) => state.getVideoState(id)?.repeat ?? false);
 
 // Persistent storage middleware
 useVideoStore.subscribe(

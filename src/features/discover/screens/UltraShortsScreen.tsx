@@ -10,7 +10,6 @@ import {
   Text,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { FlatList } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
@@ -20,114 +19,140 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { enhancedVideoCache } from '../../../utils/enhancedVideoCache';
 import { useVideoStore, useCurrentVideo } from '../../../store/videoStore';
 import EnhancedVideoPlayer from '../../../components/VideoPlayer/EnhancedVideoPlayer';
+import WatchNowButton from '../../../components/common/WatchNowButton';
+import { dummyEpisodeReelsData, dummySeriesData } from '../../../utils/dummyData';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Enhanced static video data with more realistic content
+// Enhanced static video data with more realistic content and series information
 const SHORTS_DATA = [
   {
-    id: '1',
-    title: 'Epic Mountain Adventure',
-    description: 'Breathtaking views from the highest peaks. Nature at its finest! 🌄',
+    id: 'series-1',
+    title: 'Breaking Bad',
+    description: 'A high school chemistry teacher turned methamphetamine manufacturer partners with a former student to secure his family\'s financial future as a terminal lung cancer diagnosis pushes him to a life of crime.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=1',
     likes: 12450,
     comments: 890,
     shares: 234,
-    author: 'AdventurePro',
+    author: 'AMC',
     duration: 15,
-    views: '2.1M'
+    views: '2.1M',
+    genre: 'Drama',
+    episodeCount: 62,
+    year: 2008
   },
   {
-    id: '2',
-    title: 'Amazing Cooking Skills',
-    description: 'Watch this chef create magic in the kitchen! 👨‍🍳',
+    id: 'series-2',
+    title: 'Game of Thrones',
+    description: 'Nine noble families fight for control over the lands of Westeros, while an ancient enemy returns after being dormant for millennia.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=2',
     likes: 8920,
     comments: 456,
     shares: 123,
-    author: 'ChefMaster',
+    author: 'HBO',
     duration: 12,
-    views: '1.8M'
+    views: '1.8M',
+    genre: 'Fantasy',
+    episodeCount: 73,
+    year: 2011
   },
   {
-    id: '3',
-    title: 'Dance Battle Champions',
-    description: 'Incredible moves that will blow your mind! 💃',
+    id: 'series-3',
+    title: 'Stranger Things',
+    description: 'When a young boy disappears, his mother, a police chief and his friends must confront terrifying supernatural forces in order to get him back.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=3',
     likes: 15670,
     comments: 1200,
     shares: 567,
-    author: 'DanceKing',
+    author: 'Netflix',
     duration: 18,
-    views: '3.2M'
+    views: '3.2M',
+    genre: 'Sci-Fi',
+    episodeCount: 34,
+    year: 2016
   },
   {
-    id: '4',
-    title: 'Tech Innovation',
-    description: 'The future is here! Revolutionary technology showcase 🚀',
+    id: 'series-4',
+    title: 'The Crown',
+    description: 'Follows the political rivalries and romance of Queen Elizabeth II\'s reign and the events that shaped the second half of the twentieth century.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=4',
     likes: 9870,
     comments: 678,
     shares: 345,
-    author: 'TechGuru',
+    author: 'Netflix',
     duration: 14,
-    views: '1.5M'
+    views: '1.5M',
+    genre: 'Drama',
+    episodeCount: 60,
+    year: 2016
   },
   {
-    id: '5',
-    title: 'Wildlife Photography',
-    description: 'Capturing nature\'s most beautiful moments 📸',
+    id: 'series-5',
+    title: 'Money Heist',
+    description: 'An unusual group of robbers attempt to carry out the most perfect robbery in Spanish history - stealing 2.4 billion euros from the Royal Mint of Spain.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=5',
     likes: 11230,
     comments: 789,
     shares: 234,
-    author: 'WildlifePro',
+    author: 'Netflix',
     duration: 16,
-    views: '2.8M'
+    views: '2.8M',
+    genre: 'Action',
+    episodeCount: 41,
+    year: 2017
   },
   {
-    id: '6',
-    title: 'Urban Street Art',
-    description: 'Amazing street art that transforms cities! 🎨',
+    id: 'series-6',
+    title: 'The Witcher',
+    description: 'Geralt of Rivia, a solitary monster hunter, struggles to find his place in a world where people often prove more wicked than beasts.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=6',
     likes: 8760,
     comments: 543,
     shares: 198,
-    author: 'StreetArtist',
+    author: 'Netflix',
     duration: 13,
-    views: '1.9M'
+    views: '1.9M',
+    genre: 'Fantasy',
+    episodeCount: 24,
+    year: 2019
   },
   {
-    id: '7',
-    title: 'Ocean Deep Dive',
-    description: 'Exploring the mysterious depths of the ocean 🌊',
+    id: 'series-7',
+    title: 'The Mandalorian',
+    description: 'The travels of a lone bounty hunter in the outer reaches of the galaxy, far from the authority of the New Republic.',
     videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=7',
     likes: 13450,
     comments: 987,
     shares: 345,
-    author: 'OceanExplorer',
+    author: 'Disney+',
     duration: 17,
-    views: '2.5M'
+    views: '2.5M',
+    genre: 'Sci-Fi',
+    episodeCount: 24,
+    year: 2019
   },
   {
-    id: '8',
-    title: 'Extreme Sports',
-    description: 'Pushing the limits of human capability! 🏂',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMob.mp4',
+    id: 'series-8',
+    title: 'The Boys',
+    description: 'A group of vigilantes set out to take down corrupt superheroes who abuse their superpowers.',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMobsters.mp4',
     thumbnail: 'https://picsum.photos/400/600?random=8',
     likes: 18920,
     comments: 1456,
     shares: 789,
-    author: 'ExtremeAthlete',
+    author: 'Amazon Prime',
     duration: 19,
-    views: '4.1M'
+    views: '4.1M',
+    genre: 'Action',
+    episodeCount: 32,
+    year: 2019
   }
 ];
 
@@ -156,28 +181,22 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
   const [refreshing, setRefreshing] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Calculate proper video height considering all safe areas
+  // Calculate proper video height for full-screen display
   const videoHeight = useMemo(() => {
-    const statusBarHeight = StatusBar.currentHeight || 0;
-    const navBarHeight = Platform.OS === 'android' ? 0 : insets.top;
-    const totalHeight = screenHeight - statusBarHeight - navBarHeight - tabBarHeight;
-    
-    // Ensure minimum height for proper display
-    const finalHeight = Math.max(totalHeight, 400);
+    // Use the full screen height for immersive video experience
+    // This ensures videos take the complete screen space
+    const fullScreenHeight = screenHeight;
     
     console.log('📏 Video height calculation:', {
-      screenHeight,
-      statusBarHeight,
-      navBarHeight,
+      screenHeight: fullScreenHeight,
       tabBarHeight,
-      totalHeight,
-      finalHeight
+      insetsTop: insets.top,
+      insetsBottom: insets.bottom
     });
     
-    return finalHeight;
-  }, [insets.top, tabBarHeight]);
+    return fullScreenHeight;
+  }, []);
 
-  // React Query for data fetching (simulated)
   // React Query for data fetching (simulated)
   const { data: shortsQueryData, isLoading } = useQuery({
     queryKey: ['shorts'],
@@ -221,17 +240,12 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
   }, [isFocused, isLoading, shortsData, addPreloadedVideo]);
 
   const onEnd = useCallback(() => {
+    // Don't auto-scroll - let user control scrolling manually
+    // Just update the current video state
     const nextIndex = currentIndex + 1;
     if (nextIndex < shortsData.length) {
       setCurrentIndex(nextIndex);
       setCurrentVideo(shortsData[nextIndex].id);
-
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: true
-        });
-      });
     }
   }, [currentIndex, shortsData, setCurrentVideo]);
 
@@ -266,13 +280,14 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
 
   const onShare = async (item: any) => {
     try {
+      const message = `Check out this amazing series: ${item.title} on Rocket Reels!`;
       await Share.share({
         title: item.title,
-        message: `Check out this amazing short: ${item.title}`,
-        url: item.videoUrl,
+        message,
+        url: 'https://rocketreels.app',
       });
     } catch (error) {
-      console.error('Share error:', error);
+      console.error('Error sharing:', error);
     }
   };
 
@@ -284,6 +299,18 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
           : item
       )
     );
+  };
+
+  const handleWatchNow = (item: any) => {
+    // Use dummy episode reels data for the series
+    const episodeData = dummyEpisodeReelsData(item.id, item.title).slice(0, 20);
+    
+    navigation.navigate('EpisodePlayer', {
+      contentId: item.id,
+      contentName: item.title,
+      episodes: episodeData,
+      initialIndex: 0,
+    });
   };
 
   const handleRefresh = async () => {
@@ -301,13 +328,8 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
   };
 
   const onScrollToIndexFailed = (info: any) => {
-    const wait = new Promise(resolve => setTimeout(resolve, 500));
-    wait.then(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true,
-      });
-    });
+    // Don't auto-scroll on failure - let user control scrolling
+    console.log('Scroll to index failed:', info.index);
   };
 
   const ListEmptyComponent = () => (
@@ -331,19 +353,20 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
           onEnd={onEnd}
           onShare={onShare}
           onLike={handleLike}
+          onWatchNow={handleWatchNow}
           viewHeight={videoHeight}
         />
       </View>
     );
-  }, [currentIndex, videoHeight, onEnd, onShare, handleLike]);
+  }, [currentIndex, videoHeight, onEnd, onShare, handleLike, handleWatchNow]);
 
   const keyExtractor = useCallback((item: any) => item.id, []);
 
   const getItemLayout = useMemo(() => (data: any, index: number) => ({
-    length: videoHeight,
-    offset: videoHeight * index,
+    length: screenHeight,
+    offset: screenHeight * index,
     index,
-  }), [videoHeight]);
+  }), []);
 
   // Performance monitoring
   useEffect(() => {
@@ -357,14 +380,16 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginTop: -insets.top }]}>
       <FlatList
         ref={flatListRef}
         data={shortsData}
         renderItem={renderVideoItem}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
-        pagingEnabled
+        snapToInterval={0}
+        snapToAlignment="start"
+        pagingEnabled={false}
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
         scrollEventThrottle={16}
@@ -383,13 +408,10 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
             colors={["#3b82f6"]}
           />
         }
-        onScrollToIndexFailed={onScrollToIndexFailed}
-        maintainVisibleContentPosition={{
-          minIndexForVisible: 0,
-          autoscrollToTopThreshold: 10,
-        }}
         ListEmptyComponent={ListEmptyComponent}
         onScroll={handleScroll}
+        style={styles.flatList}
+        contentContainerStyle={styles.flatListContent}
       />
     </View>
   );
@@ -400,8 +422,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  flatList: {
+    flex: 1,
+  },
+  flatListContent: {
+    flexGrow: 1,
+  },
   videoContainer: {
     width: screenWidth,
+    height: screenHeight,
     backgroundColor: '#000000',
   },
   emptyText: {
