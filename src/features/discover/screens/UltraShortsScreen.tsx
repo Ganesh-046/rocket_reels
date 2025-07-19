@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { enhancedVideoCache } from '../../../utils/enhancedVideoCache';
+import { advancedVideoOptimizer } from '../../../utils/advancedVideoOptimizer';
+import { hardwareAcceleratedScroll } from '../../../utils/hardwareAcceleratedScroll';
 import { useVideoStore, useCurrentVideo } from '../../../store/videoStore';
 import EnhancedVideoPlayer from '../../../components/VideoPlayer/EnhancedVideoPlayer';
 import WatchNowButton from '../../../components/common/WatchNowButton';
@@ -355,6 +357,7 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
           onLike={handleLike}
           onWatchNow={handleWatchNow}
           viewHeight={videoHeight}
+          isScrolling={false} // Add scrolling state for optimization
         />
       </View>
     );
@@ -387,19 +390,12 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
         renderItem={renderVideoItem}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        {...hardwareAcceleratedScroll.getOptimizedScrollConfig()}
         snapToInterval={0}
         snapToAlignment="start"
         pagingEnabled={false}
-        showsVerticalScrollIndicator={false}
-        decelerationRate="fast"
-        scrollEventThrottle={16}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        maxToRenderPerBatch={1}
-        windowSize={3}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={1}
-        updateCellsBatchingPeriod={100}
         refreshControl={
           <RefreshControl
             onRefresh={handleRefresh}

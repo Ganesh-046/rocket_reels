@@ -7,6 +7,7 @@ import {
   Dimensions,
   Platform,
   InteractionManager,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -23,8 +24,12 @@ import { useVideoStore, useVideoState, useIsVideoPlaying, useVideoProgress, useV
 import { prefetchManager } from '../../../utils/prefetch';
 import { performanceMonitor } from '../../../utils/performanceMonitor';
 import { useVideoTransition } from '../../../hooks/useVideoTransition';
-import { enhancedVideoCache } from '../../../utils/enhancedVideoCache';
+import { instagramVideoCache } from '../../../utils/instagramOptimizedVideoCache';
+import { instagramPerformanceOptimizer } from '../../../utils/instagramPerformanceOptimizer';
+import { advancedVideoOptimizer } from '../../../utils/advancedVideoOptimizer';
+import { hardwareAcceleratedScroll } from '../../../utils/hardwareAcceleratedScroll';
 import { videoQueue } from '../../../utils/videoQueue';
+import { useAdvancedPerformance } from '../../../hooks/useAdvancedPerformance';
 import VideoProgressBar from '../../../components/VideoPlayer/VideoProgressBar';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -98,6 +103,9 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
     isScrolling,
   });
 
+  // Advanced performance monitoring
+  const { metrics, isOptimal, startMonitoring, endMonitoring } = useAdvancedPerformance(item.id);
+
   // Animated values for smooth interactions
   const scaleValue = useSharedValue(1);
   const opacityValue = useSharedValue(1);
@@ -127,25 +135,32 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
     return item.views;
   }, [item.views]);
 
-  // Optimized video source with better buffer configuration
-  const videoSource = useMemo(() => ({
-    uri: videoState?.cachedPath || item.videoUrl,
-    headers: {
-      'Cache-Control': 'max-age=3600',
-      'Accept-Encoding': 'gzip, deflate',
-      'User-Agent': 'RocketReels/1.0',
-    },
-    bufferConfig: {
-      minBufferMs: 300, // Reduced for faster start
-      maxBufferMs: 2000, // Reduced for memory efficiency
-      bufferForPlaybackMs: 100, // Reduced for immediate playback
-      bufferForPlaybackAfterRebufferMs: 300, // Reduced for faster recovery
-      backBufferDurationMs: 1000, // Reduced for memory efficiency
-      maxHeapAllocationPercent: 0.15, // Reduced for better performance
-    },
-    minLoadRetryCount: 2, // Reduced retry count
-    shouldCache: true,
-  }), [videoState?.cachedPath, item.videoUrl]);
+  // Advanced Instagram-optimized video source configuration
+  const videoSource = useMemo(() => {
+    const optimizedConfig = advancedVideoOptimizer.getOptimizedVideoConfig();
+    
+    if (videoState?.cachedPath) {
+      return { 
+        uri: videoState.cachedPath,
+        ...optimizedConfig,
+      };
+    }
+    
+    // Use actual video URL with fallback
+    const actualVideoUrl = item.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4';
+    
+    return {
+      uri: actualVideoUrl,
+      headers: {
+        'Cache-Control': 'max-age=3600',
+        'Accept-Encoding': 'gzip, deflate',
+        'User-Agent': 'Instagram/219.0.0.29.118 Android', // Instagram user agent for better CDN
+      },
+      ...optimizedConfig,
+      minLoadRetryCount: 1, // Reduced retry count for faster failure
+      shouldCache: true,
+    };
+  }, [videoState?.cachedPath, item.videoUrl]);
 
   // Clear auto-hide timer
   const clearAutoHideTimer = useCallback(() => {
@@ -178,6 +193,8 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
   }, [controlsOpacity, clearAutoHideTimer]);
 
   // Optimized video loading based on visibility and scrolling state
+  const hasLoadedRef = useRef(false);
+  
   useEffect(() => {
     if (!isMounted.current) return;
 
@@ -188,12 +205,18 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
     }
 
     if (isVisible && !isScrolling) {
-      // Load video with a small delay to prevent loading during fast scrolling
-      videoLoadTimeoutRef.current = setTimeout(() => {
-        if (isMounted.current) {
-          setShouldLoadVideo(true);
-        }
-      }, 100);
+      // Load video with delay only if not already loaded
+      if (!hasLoadedRef.current) {
+        videoLoadTimeoutRef.current = setTimeout(() => {
+          if (isMounted.current) {
+            setShouldLoadVideo(true);
+            hasLoadedRef.current = true;
+          }
+        }, 100);
+      } else {
+        // If already loaded, show immediately
+        setShouldLoadVideo(true);
+      }
     } else {
       setShouldLoadVideo(false);
     }
@@ -205,7 +228,8 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
 
     const preloadVideo = async () => {
       try {
-        const cachedPath = await enhancedVideoCache.cacheVideo(item.videoUrl, item.id, 'high');
+        // Use advanced progressive video loading
+        const cachedPath = await advancedVideoOptimizer.loadVideoProgressively(item.id, item.videoUrl);
         if (cachedPath !== item.videoUrl) {
           setVideoCached(item.id, cachedPath);
         }
@@ -423,35 +447,27 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
         onPress={handleCardPress}
         activeOpacity={1}
       >
-        {/* Video Player - Only render when should load */}
-        {shouldLoadVideo && (
-          <Video
-            ref={videoRef}
-            source={videoSource}
-            style={styles.video}
-            resizeMode="cover"
-            repeat={true}
-            paused={!isPlaying || isScrolling} // Pause during scrolling
-            muted={false}
-            playInBackground={false}
-            playWhenInactive={false}
-            ignoreSilentSwitch="ignore"
-            onLoad={onLoad}
-            onReadyForDisplay={onReadyForDisplay}
-            onProgress={onProgress}
-            onBuffer={onBuffer}
-            onError={onError}
-          />
-        )}
-        
-        {/* Thumbnail fallback when video is not loaded */}
-        {!shouldLoadVideo && (
-          <FastImage
-            source={{ uri: item.thumbnail }}
-            style={styles.video}
-            resizeMode={FastImage.resizeMode.cover}
-          />
-        )}
+        {/* Video Player - Always render, pause when not ready */}
+        <Video
+          ref={videoRef}
+          source={videoSource}
+          style={styles.video}
+          resizeMode="cover"
+          repeat={true}
+          paused={!isPlaying || isScrolling} // Simplified pause logic - remove shouldLoadVideo condition
+          muted={false}
+          playInBackground={false}
+          playWhenInactive={false}
+          ignoreSilentSwitch="ignore"
+          onLoad={onLoad}
+          onReadyForDisplay={onReadyForDisplay}
+          onProgress={onProgress}
+          onBuffer={onBuffer}
+          onError={onError}
+          // Show thumbnail while video not ready
+          poster={!shouldLoadVideo ? item.thumbnail : undefined}
+          posterResizeMode="cover"
+        />
         
         
         
@@ -469,10 +485,12 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
           <Text style={styles.durationText}>{item.duration}s</Text>
         </View>
 
-        {/* Loading Indicator */}
+        {/* Subtle loading indicator - no text */}
         {videoState?.isBuffering && (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
+          <View style={styles.subtleLoadingOverlay}>
+            <View style={styles.loadingSpinner}>
+              <ActivityIndicator size="small" color="#ffffff" />
+            </View>
           </View>
         )}
       </TouchableOpacity>
@@ -582,19 +600,20 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  loadingContainer: {
+  subtleLoadingOverlay: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -40 }, { translateY: -20 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 20,
+    padding: 8,
   },
-  loadingText: {
-    fontSize: 14,
-    color: '#ffffff',
+  loadingSpinner: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bottomOverlay: {
     position: 'absolute',

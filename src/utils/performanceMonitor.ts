@@ -24,6 +24,7 @@ class PerformanceMonitor {
   private frameCount = 0;
   private lastFrameTime = Date.now();
   private isMonitoring = false;
+  private eventListeners: Map<string, Function[]> = new Map();
 
   constructor() {
     if (__DEV__) {
@@ -167,6 +168,37 @@ class PerformanceMonitor {
   // Stop monitoring
   stopMonitoring(): void {
     this.isMonitoring = false;
+  }
+
+  // Event system for performance alerts
+  emit(event: string, data?: any): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(listener => {
+        try {
+          listener(data);
+        } catch (error) {
+          console.error(`Error in performance event listener for ${event}:`, error);
+        }
+      });
+    }
+  }
+
+  on(event: string, listener: Function): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, []);
+    }
+    this.eventListeners.get(event)!.push(listener);
+  }
+
+  off(event: string, listener: Function): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
   }
 }
 

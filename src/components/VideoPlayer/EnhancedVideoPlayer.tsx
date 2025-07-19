@@ -23,6 +23,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useVideoStore, useVideoState, useIsVideoPlaying, useIsVideoCached, useVideoProgress, useVideoDuration } from '../../store/videoStore';
 import { enhancedVideoCache } from '../../utils/enhancedVideoCache';
+import { advancedVideoOptimizer } from '../../utils/advancedVideoOptimizer';
+import { hardwareAcceleratedScroll } from '../../utils/hardwareAcceleratedScroll';
+import { useAdvancedPerformance } from '../../hooks/useAdvancedPerformance';
 import VideoProgressBar from './VideoProgressBar';
 import WatchNowButton from '../common/WatchNowButton';
 
@@ -88,6 +91,9 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
   const [showPauseButton, setShowPauseButton] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Advanced performance monitoring
+  const { metrics, isOptimal, startMonitoring, endMonitoring } = useAdvancedPerformance(item.id);
+
   // Animated values
   const progressValue = useSharedValue(0);
   const opacityValue = useSharedValue(1);
@@ -97,25 +103,32 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 
 
 
-  // Memoized video source
-  const videoSource = useMemo(() => ({
-    uri: videoState?.cachedPath || item.videoUrl,
-    headers: {
-      'Cache-Control': 'max-age=3600',
-      'Accept-Encoding': 'gzip, deflate',
-      'User-Agent': 'RocketReels/1.0',
-    },
-    bufferConfig: {
-      minBufferMs: 500, // Reduced for faster start
-      maxBufferMs: 3000, // Reduced for faster response
-      bufferForPlaybackMs: 200, // Reduced for immediate playback
-      bufferForPlaybackAfterRebufferMs: 500, // Reduced for faster recovery
-      backBufferDurationMs: 2000, // Reduced for memory efficiency
-      maxHeapAllocationPercent: 0.2, // Reduced for better performance
-    },
-    minLoadRetryCount: 3,
-    shouldCache: true,
-  }), [videoState?.cachedPath, item.videoUrl]);
+  // Advanced Instagram-optimized video source configuration
+  const videoSource = useMemo(() => {
+    const optimizedConfig = advancedVideoOptimizer.getOptimizedVideoConfig();
+    
+    if (videoState?.cachedPath) {
+      return { 
+        uri: videoState.cachedPath,
+        ...optimizedConfig,
+      };
+    }
+    
+    // Use actual video URL with fallback
+    const actualVideoUrl = item.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4';
+    
+    return {
+      uri: actualVideoUrl,
+      headers: {
+        'Cache-Control': 'max-age=3600',
+        'Accept-Encoding': 'gzip, deflate',
+        'User-Agent': 'Instagram/219.0.0.29.118 Android', // Instagram user agent for better CDN
+      },
+      ...optimizedConfig,
+      minLoadRetryCount: 1, // Reduced retry count for faster failure
+      shouldCache: true,
+    };
+  }, [videoState?.cachedPath, item.videoUrl]);
 
   // Function to show pause button with auto-hide
   const showPauseButtonWithTimer = useCallback(() => {
@@ -161,11 +174,11 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     };
   }, []);
 
-  // Preload video when component mounts
+  // Preload video with advanced progressive loading
   useEffect(() => {
     const preloadVideo = async () => {
       try {
-        const cachedPath = await enhancedVideoCache.cacheVideo(item.videoUrl, item.id, 'high'); // High priority
+        const cachedPath = await advancedVideoOptimizer.loadVideoProgressively(item.id, item.videoUrl);
         if (cachedPath !== item.videoUrl) {
           setVideoCached(item.id, cachedPath);
         }
@@ -177,30 +190,31 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     preloadVideo();
   }, [item.id, item.videoUrl, setVideoCached]);
 
-  // Start playing immediately when component mounts if visible
+  // Start playing immediately when component mounts if visible and not scrolling
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && !isScrolling) {
       // Immediate play without any delay
       setVideoPlaying(item.id, true);
+      startMonitoring();
+    } else {
+      endMonitoring();
     }
-  }, [isVisible, item.id, setVideoPlaying]);
+  }, [isVisible, isScrolling, item.id, setVideoPlaying, startMonitoring, endMonitoring]);
 
-  // Handle visibility changes with optimized timing
+  // Simplified visibility-based play/pause logic
   useEffect(() => {
-    if (isVisible) {
-      // Start playing immediately when visible
+    if (isVisible && !isScrolling) {
+      // Start playing immediately when visible and not scrolling
       setVideoPlaying(item.id, true);
       controllerOpacity.value = withTiming(1, { duration: 50 });
     } else {
-      // Pause when not visible with minimal delay to prevent flickering
-      setTimeout(() => {
-        setVideoPlaying(item.id, false);
-      }, 30);
+      // Immediate pause when not visible or scrolling
+      setVideoPlaying(item.id, false);
       controllerOpacity.value = withTiming(0, { duration: 50 });
       // Hide pause button when not visible
       hidePauseButton();
     }
-  }, [isVisible, item.id, setVideoPlaying, controllerOpacity, hidePauseButton]);
+  }, [isVisible, isScrolling, item.id, setVideoPlaying, controllerOpacity, hidePauseButton]);
 
   // Video event handlers
   const onLoad = useCallback(({ duration }: { duration: number }) => {
@@ -319,10 +333,11 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
           source={videoSource}
           repeat={true}
           resizeMode="cover"
-          paused={!isPlaying} // Depend on isPlaying state
+          paused={!isPlaying || isScrolling} // Pause during scrolling
           controls={false}
           playInBackground={false}
-          poster={item.thumbnail}
+          // Show thumbnail while video not ready
+          poster={!videoState?.isReady ? item.thumbnail : undefined}
           posterResizeMode="cover"
           preventsDisplaySleepDuringVideoPlayback
           onError={onError}
@@ -339,10 +354,10 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 
 
 
-        {/* Loading Indicator */}
+        {/* Subtle loading indicator - no text */}
         {videoState?.isBuffering && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#ffffff" />
+          <View style={styles.subtleLoadingOverlay}>
+            <ActivityIndicator size="small" color="#ffffff" />
           </View>
         )}
 
@@ -427,20 +442,20 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 
                       {onWatchNow && (
                         <TouchableOpacity 
-                          style={styles.actionButton} 
+                          style={{marginBottom: 20, }} 
                           onPress={() => onWatchNow(item)}
                           activeOpacity={0.8}
                         >
-                          <View style={styles.iconContainer}>
+              <View style={[styles.iconContainer, { borderWidth: 0, marginLeft: 10}]}>
                             <WatchNowButton 
                               onPress={() => onWatchNow(item)}
                               size="small"
                             />
-                          </View>
-                          <Text style={styles.actionText}>
+              </View>
+              <Text style={styles.actionText}>
                             Watch Now
-                          </Text>
-                        </TouchableOpacity>
+              </Text>
+            </TouchableOpacity>
                       )}
           </View>
 
@@ -476,15 +491,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
 
-  loadingContainer: {
+  subtleLoadingOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    padding: 8,
   },
   cacheIndicator: {
     position: 'absolute',

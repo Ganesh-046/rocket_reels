@@ -201,7 +201,8 @@ class EnhancedVideoCache {
     }
   }
 
-  private async cleanup(): Promise<void> {
+  // Public cleanup method for external access
+  async cleanup(): Promise<void> {
     if (this.cleanupPromise) {
       return this.cleanupPromise;
     }
@@ -249,13 +250,10 @@ class EnhancedVideoCache {
 
   async getCacheSize(): Promise<number> {
     try {
-      let totalSize = 0;
-      for (const metadata of this.metadata.values()) {
-        totalSize += metadata.size;
-      }
-      return totalSize;
+      const entries = Array.from(this.metadata.values());
+      return entries.reduce((total, metadata) => total + metadata.size, 0);
     } catch (error) {
-      console.error('Error getting cache size:', error);
+      console.error('Error calculating cache size:', error);
       return 0;
     }
   }
@@ -266,48 +264,63 @@ class EnhancedVideoCache {
     oldestVideo: string | null;
     mostAccessed: string | null;
   }> {
-    const totalSize = await this.getCacheSize();
-    const videoCount = this.metadata.size;
+    try {
+      const entries = Array.from(this.metadata.entries());
+      const totalSize = await this.getCacheSize();
+      
+      let oldestVideo: string | null = null;
+      let mostAccessed: string | null = null;
+      let oldestTime = Date.now();
+      let maxAccessCount = 0;
 
-    let oldestVideo: string | null = null;
-    let mostAccessed: string | null = null;
-    let oldestTime = Date.now();
-    let maxAccess = 0;
+      for (const [id, metadata] of entries) {
+        if (metadata.timestamp < oldestTime) {
+          oldestTime = metadata.timestamp;
+          oldestVideo = id;
+        }
+        
+        if (metadata.accessCount > maxAccessCount) {
+          maxAccessCount = metadata.accessCount;
+          mostAccessed = id;
+        }
+      }
 
-    for (const [id, metadata] of this.metadata.entries()) {
-      if (metadata.timestamp < oldestTime) {
-        oldestTime = metadata.timestamp;
-        oldestVideo = id;
-      }
-      if (metadata.accessCount > maxAccess) {
-        maxAccess = metadata.accessCount;
-        mostAccessed = id;
-      }
+      return {
+        totalSize,
+        videoCount: entries.length,
+        oldestVideo,
+        mostAccessed,
+      };
+    } catch (error) {
+      console.error('Error getting cache stats:', error);
+      return {
+        totalSize: 0,
+        videoCount: 0,
+        oldestVideo: null,
+        mostAccessed: null,
+      };
     }
-
-    return {
-      totalSize,
-      videoCount,
-      oldestVideo,
-      mostAccessed,
-    };
   }
 
   async clearCache(): Promise<void> {
     try {
-      // Delete all cached files
-      const files = await RNFS.readDir(this.cacheDir);
-      const deletePromises = files
-        .filter(file => file.name.endsWith('.mp4'))
-        .map(file => RNFS.unlink(file.path));
-      
+      // Remove all cached files
+      const entries = Array.from(this.metadata.values());
+      const deletePromises = entries.map(async (metadata) => {
+        try {
+          await RNFS.unlink(metadata.path);
+        } catch (error) {
+          console.error(`Failed to delete ${metadata.path}:`, error);
+        }
+      });
+
       await Promise.allSettled(deletePromises);
       
       // Clear metadata
       this.metadata.clear();
       this.saveMetadata();
       
-      console.log('🗑️ Cache cleared successfully');
+      console.log('🧹 Cache cleared completely');
     } catch (error) {
       console.error('Error clearing cache:', error);
     }
@@ -325,6 +338,57 @@ class EnhancedVideoCache {
     } catch (error) {
       console.error(`Error removing video ${videoId}:`, error);
     }
+  }
+
+  // Smart cache management for Instagram-like performance
+  async smartCacheManagement(): Promise<void> {
+    try {
+      const stats = await this.getCacheStats();
+      
+      // If cache is getting large, perform intelligent cleanup
+      if (stats.totalSize > this.config.maxSize * 0.8) {
+        console.log('🧠 Smart cache management triggered');
+        
+        // Remove least accessed videos first
+        const entries = Array.from(this.metadata.entries());
+        entries.sort(([, a], [, b]) => a.accessCount - b.accessCount);
+        
+        // Remove 20% of least accessed videos
+        const removeCount = Math.ceil(entries.length * 0.2);
+        const toRemove = entries.slice(0, removeCount);
+        
+        for (const [id] of toRemove) {
+          await this.removeVideo(id);
+        }
+        
+        console.log(`🧠 Smart cleanup removed ${removeCount} videos`);
+      }
+    } catch (error) {
+      console.error('Smart cache management error:', error);
+    }
+  }
+
+  // Preload with priority management
+  async preloadWithPriority(videos: Array<{ id: string; url: string; priority: 'high' | 'low' }>): Promise<void> {
+    await this.initCache();
+
+    // Sort by priority
+    const highPriority = videos.filter(v => v.priority === 'high');
+    const lowPriority = videos.filter(v => v.priority === 'low');
+
+    // Preload high priority first
+    for (const video of highPriority) {
+      await this.cacheVideo(video.url, video.id, 'high');
+    }
+
+    // Then preload low priority in background
+    const lowPriorityPromises = lowPriority.map(video => 
+      this.cacheVideo(video.url, video.id, 'low')
+    );
+
+    Promise.allSettled(lowPriorityPromises).then(() => {
+      console.log(`🚀 Priority preload completed: ${highPriority.length} high, ${lowPriority.length} low`);
+    });
   }
 }
 

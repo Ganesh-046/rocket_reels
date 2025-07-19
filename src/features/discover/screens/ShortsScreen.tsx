@@ -19,6 +19,8 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
+import { advancedVideoOptimizer } from '../../../utils/advancedVideoOptimizer';
+import { hardwareAcceleratedScroll } from '../../../utils/hardwareAcceleratedScroll';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -432,18 +434,10 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
         renderItem={renderVideoItem}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
-        pagingEnabled={false}
-        showsVerticalScrollIndicator={false}
-        decelerationRate="fast"
-        scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        maxToRenderPerBatch={1}
-        windowSize={3}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={1}
-        updateCellsBatchingPeriod={100}
-        disableVirtualization={false}
+        {...hardwareAcceleratedScroll.getOptimizedScrollConfig()}
+        pagingEnabled={false}
         refreshControl={
           <RefreshControl
             onRefresh={handleRefresh}
@@ -477,10 +471,10 @@ const ShortVideoPlayer = ({
   const [cachedPath, setCachedPath] = useState<string | null>(null);
 
   useEffect(() => {
-    // Preload video
+    // Preload video with advanced progressive loading
     const preloadVideo = async () => {
       try {
-        const path = await cacheVideo(item.videoUrl, item.id);
+        const path = await advancedVideoOptimizer.loadVideoProgressively(item.id, item.videoUrl);
         setCachedPath(path);
       } catch (error) {
         console.error('Error preloading video:', error);
@@ -521,29 +515,15 @@ const ShortVideoPlayer = ({
         ref={videoRef}
         style={styles.video}
         source={{
-          uri: cachedPath || item.videoUrl,
-          headers: {
-            'Cache-Control': 'max-age=3600',
-            'Accept-Encoding': 'gzip, deflate',
-            'User-Agent': 'RocketReels/1.0',
-          },
-          bufferConfig: {
-            minBufferMs: 1000,
-            maxBufferMs: 5000,
-            bufferForPlaybackMs: 500,
-            bufferForPlaybackAfterRebufferMs: 1000,
-            backBufferDurationMs: 3000,
-            maxHeapAllocationPercent: 0.3,
-          },
-          minLoadRetryCount: 3,
-          shouldCache: true,
+          uri: cachedPath || item.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4',
+          ...advancedVideoOptimizer.getOptimizedVideoConfig(),
         }}
         repeat={true} // Enable repeat for shorts
         resizeMode="cover"
-        paused={!play || !videoReady}
+        paused={!play} // Keep original pause logic for ShortsScreen
         controls={false}
         playInBackground={false}
-        poster={item.thumbnail}
+        // Removed poster - video plays directly
         preventsDisplaySleepDuringVideoPlayback
         onError={(error) => console.log('video error', error)}
         onLoad={load}
@@ -562,12 +542,7 @@ const ShortVideoPlayer = ({
         <View style={[styles.progressBar, { width: `${state.progress}%` }]} />
       </View>
 
-      {/* Loading Indicator */}
-      {!videoReady && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#ffffff" />
-        </View>
-      )}
+      {/* Removed loading indicator - video plays directly */}
 
       {/* Controls Overlay */}
       {state.controller && (

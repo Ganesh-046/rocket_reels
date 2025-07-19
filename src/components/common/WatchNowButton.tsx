@@ -65,7 +65,7 @@ const WatchNowButton: React.FC<WatchNowButtonProps> = ({
       activeOpacity={0.8}
     >
       <SvgIcons name="play" size={getIconSize(size)} color="#ffffff" />
-      <Text style={textStyle}>Watch Now</Text>
+      {/* <Text style={textStyle}>Watch Now</Text> */}
     </TouchableOpacity>
   );
 };
