@@ -323,16 +323,16 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                         <Text style={styles.planDescription}>
                           {item.description}
                         </Text>
-                      </View>
+                </View>
                     </LinearGradient>
                     <View style={styles.subscriptionPrice}>
                       <Text style={styles.priceText}>
                         {currencyFormat(item.price)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
             ))}
 
             {/* Refill Coins */}
@@ -557,7 +557,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
             </View>
           </View>
         )}
-      </View>
+        </View>
     </LinearGradient>
   );
 };
@@ -565,49 +565,69 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 40,
+    paddingTop: 20,
   },
   mainContainer: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   headerContainer: {
-    padding: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingHorizontal: isLargeDevice ? width * 0.04 : width * 0.06,
+    paddingVertical: isLargeDevice ? width * 0.03 : width * 0.05,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    marginTop: isLargeDevice ? width * 0.02 : width * 0.04,
+    borderRadius: 16,
+    // elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   headerTextContainer: {
     marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   headerTitle: {
-    fontSize: isLargeDevice ? 24 : 32,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 18 : 22,
+    fontWeight: '600',
     color: '#ffffff',
-    marginBottom: isLargeDevice ? width * 0.001 : width * 0.01,
+    marginBottom: isLargeDevice ? width * 0.005 : width * 0.01,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   headerSubtitle: {
-    fontSize: isLargeDevice ? 18 : 24,
-    color: '#ffffff',
-    opacity: 0.8,
+    fontSize: isLargeDevice ? 14 : 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   balanceContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: isLargeDevice ? width * 0.015 : width * 0.03,
-    padding: isLargeDevice ? width * 0.02 : width * 0.04,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    padding: isLargeDevice ? width * 0.025 : width * 0.04,
+    // elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   balanceLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   balanceText: {
-    fontSize: isLargeDevice ? 20 : 28,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontSize: isLargeDevice ? 18 : 24,
+    fontWeight: '600',
+    color: '#ffffff',
     marginRight: isLargeDevice ? width * 0.01 : width * 0.02,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   arrowText: {
-    fontSize: 20,
-    color: '#333333',
+    fontSize: 18,
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   balanceRight: {
     flexDirection: 'row',
@@ -623,21 +643,25 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   balanceAmount: {
-    fontSize: isLargeDevice ? 24 : 36,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 22 : 30,
+    fontWeight: '600',
     color: '#ffffff',
     marginLeft: isLargeDevice ? width * 0.01 : width * 0.02,
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   contentContainer: {
     flex: 1,
   },
   checkContainer: {
-    margin: isLargeDevice ? width * 0.01 : width * 0.02,
-    padding: isLargeDevice ? width * 0.01 : width * 0.02,
-    borderRadius: width * 0.01,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    margin: isLargeDevice ? width * 0.02 : width * 0.04,
+    padding: isLargeDevice ? width * 0.025 : width * 0.04,
+    borderRadius: 20,
+    // elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   directionContainer: {
     flexDirection: 'row',
@@ -645,31 +669,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heading: {
-    fontSize: isLargeDevice ? 16 : 28,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 16 : 20,
+    fontWeight: '600',
     color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   rewardCard: {
     width: isLargeDevice ? width * 0.1 : width * 0.16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     margin: width * 0.01,
-    borderRadius: width * 0.01,
-    padding: isLargeDevice ? width * 0.01 : width * 0.02,
+    borderRadius: 16,
+    padding: isLargeDevice ? width * 0.015 : width * 0.025,
+    // elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   focusedRewardCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    elevation: 6,
     paddingVertical: width * 0.03,
     width: isLargeDevice ? width * 0.12 : width * 0.18,
+    borderRadius: 20,
   },
   rewardCardText: {
     color: '#333333',
     marginBottom: isLargeDevice ? width * 0.01 : width * 0.02,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   rewardIcon: {
     fontSize: 20,
@@ -679,35 +711,49 @@ const styles = StyleSheet.create({
     margin: width * 0.02,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 20,
     alignSelf: 'center',
+    // elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   checkInButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+    letterSpacing: 0.5,
   },
   sectionTitle: {
-    fontSize: isLargeDevice ? 16 : 24,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 16 : 20,
+    fontWeight: '600',
     color: '#ffffff',
-    marginVertical: isLargeDevice ? width * 0.005 : width * 0.01,
-    marginTop: isLargeDevice ? width * 0.01 : width * 0.02,
-    marginLeft: isLargeDevice ? width * 0.01 : width * 0.02,
+    marginBottom: isLargeDevice ? width * 0.015 : width * 0.025,
+    marginLeft: isLargeDevice ? width * 0.02 : width * 0.04,
+    marginTop: isLargeDevice ? width * 0.02 : width * 0.04,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+    letterSpacing: 0.5,
   },
   subscriptionRow: {
     justifyContent: 'flex-start',
     flex: 0,
   },
   subscriptionCard: {
-    padding: isLargeDevice ? width * 0.01 : width * 0.02,
-    borderRadius: width * 0.01,
+    padding: isLargeDevice ? width * 0.015 : width * 0.025,
+    borderRadius: 20,
     width: isLargeDevice ? width * 0.5 : width,
+    // elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   subscriptionHeader: {
-    borderTopRightRadius: width * 0.01,
-    borderTopLeftRadius: width * 0.01,
+    borderTopRightRadius: 20,
+    borderTopLeftRadius: 20,
     flex: 0,
   },
   subscriptionHeaderContent: {
@@ -744,48 +790,53 @@ const styles = StyleSheet.create({
   },
   planName: {
     textTransform: 'capitalize',
-    fontSize: isLargeDevice ? 24 : 32,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 20 : 26,
+    fontWeight: '600',
     color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   planDescription: {
     marginTop: isLargeDevice ? width * 0.01 : width * 0.015,
-    color: '#ffffff',
-    fontSize: isLargeDevice ? 14 : 20,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: isLargeDevice ? 13 : 15,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   subscriptionPrice: {
-    padding: isLargeDevice ? width * 0.01 : width * 0.03,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    borderBottomRightRadius: width * 0.01,
-    borderBottomLeftRadius: width * 0.01,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: isLargeDevice ? width * 0.015 : width * 0.025,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   priceText: {
-    fontSize: isLargeDevice ? 14 : 20,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 14 : 16,
+    fontWeight: '600',
     color: '#ffffff',
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   refillRow: {
     justifyContent: 'flex-start',
     flex: 0,
   },
   refillCard: {
-    borderRadius: width * 0.01,
-    margin: isLargeDevice ? width * 0.01 : width * 0.02,
+    borderRadius: 20,
+    margin: isLargeDevice ? width * 0.015 : width * 0.025,
     marginHorizontal: isLargeDevice ? width * 0.0115 : width * 0.02,
     height: isLargeDevice ? width * 0.2 : width * 0.3,
     width: isLargeDevice ? width * 0.227 : width * 0.458,
     justifyContent: 'center',
+    // elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   refillCardContent: {
     flex: 1,
-    borderRadius: width * 0.01,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   planContainer: {
     position: 'absolute',
@@ -793,8 +844,8 @@ const styles = StyleSheet.create({
     top: -width * 0.02,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#5E4536',
-    borderRadius: width * 0.01,
+    backgroundColor: 'rgba(94, 69, 54, 0.9)',
+    borderRadius: 12,
     padding: width * 0.01,
     zIndex: 1,
   },
@@ -802,6 +853,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textTransform: 'capitalize',
     fontSize: isLargeDevice ? 12 : 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   priceCircle: {
     flexDirection: 'row',
@@ -823,44 +875,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flex: 0,
     width: '100%',
-    backgroundColor: '#5E4536',
-    borderBottomLeftRadius: width * 0.01,
-    borderBottomRightRadius: width * 0.01,
+    backgroundColor: 'rgba(94, 69, 54, 0.9)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     justifyContent: 'center',
-    padding: isLargeDevice ? width * 0.01 : width * 0.02,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    elevation: 4,
+    padding: isLargeDevice ? width * 0.015 : width * 0.025,
   },
   coinsAmount: {
-    fontSize: isLargeDevice ? 16 : 24,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 16 : 20,
+    fontWeight: '600',
     color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   coinsLabel: {
     color: '#ffffff',
     marginLeft: isLargeDevice ? width * 0.005 : width * 0.01,
-    fontSize: isLargeDevice ? 12 : 16,
+    fontSize: isLargeDevice ? 12 : 14,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   benefitsContainer: {
     margin: isLargeDevice ? width * 0.01 : width * 0.02,
     padding: 0,
   },
   benefitCard: {
-    padding: isLargeDevice ? width * 0.015 : width * 0.03,
+    padding: isLargeDevice ? width * 0.025 : width * 0.04,
     marginTop: isLargeDevice ? width * 0.001 : width * 0.01,
-    borderRadius: width * 0.01,
+    borderRadius: 20,
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    // elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   benefitTitle: {
-    fontSize: isLargeDevice ? 16 : 24,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 16 : 20,
+    fontWeight: '600',
     color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   benefitContent: {
     flexDirection: 'row',
@@ -872,9 +925,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   benefitDescription: {
-    color: '#ffffff',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: isLargeDevice ? width * 0.01 : 5,
-    fontSize: isLargeDevice ? 12 : 16,
+    fontSize: isLargeDevice ? 13 : 14,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   coinsDisplay: {
     flexDirection: 'row',
@@ -891,14 +945,20 @@ const styles = StyleSheet.create({
   },
   watchAdsButton: {
     backgroundColor: '#7d2537',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    // elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   watchAdsButtonText: {
     color: '#ffffff',
-    fontSize: isLargeDevice ? 12 : 16,
-    fontWeight: 'bold',
+    fontSize: isLargeDevice ? 12 : 14,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
   termsContainer: {
     flexDirection: 'row',
@@ -1061,4 +1121,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RewardsScreen;
+export default RewardsScreen; 
