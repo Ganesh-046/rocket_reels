@@ -1,77 +1,136 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { performanceMonitor } from '../../utils/performanceMonitor';
-import { videoQueue } from '../../utils/videoQueue';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useTheme } from '../../hooks/useTheme';
 
-interface PerformanceMonitorProps {
-  isVisible?: boolean;
+const { width: screenWidth } = Dimensions.get('window');
+
+interface PerformanceMetrics {
+  fps: number;
+  memoryUsage: number;
+  renderTime: number;
+  scrollPerformance: number;
 }
 
-const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ isVisible = false }) => {
-  const [metrics, setMetrics] = useState<any>({});
-  const [queueStats, setQueueStats] = useState<any>({});
+interface PerformanceMonitorProps {
+  enabled?: boolean;
+  showMetrics?: boolean;
+}
+
+const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ 
+  enabled = __DEV__, 
+  showMetrics = false 
+}) => {
+  const { theme: { colors } } = useTheme();
+  const [metrics, setMetrics] = useState<PerformanceMetrics>({
+    fps: 0,
+    memoryUsage: 0,
+    renderTime: 0,
+    scrollPerformance: 0,
+  });
+
+  const frameCount = useRef(0);
+  const lastTime = useRef(Date.now());
+  const animationFrameId = useRef<number>();
+
+  // FPS monitoring
+  const measureFPS = () => {
+    frameCount.current++;
+    const currentTime = Date.now();
+    
+    if (currentTime - lastTime.current >= 1000) {
+      const fps = Math.round((frameCount.current * 1000) / (currentTime - lastTime.current));
+      setMetrics(prev => ({ ...prev, fps }));
+      frameCount.current = 0;
+      lastTime.current = currentTime;
+    }
+
+    if (enabled) {
+      animationFrameId.current = requestAnimationFrame(measureFPS);
+    }
+  };
+
+  // Memory usage monitoring (approximate)
+  const measureMemoryUsage = () => {
+    if (enabled && 'performance' in global) {
+      try {
+        const memory = (performance as any).memory;
+        if (memory) {
+          const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024);
+          setMetrics(prev => ({ ...prev, memoryUsage: usedMB }));
+        }
+      } catch (error) {
+        // Memory API not available
+      }
+    }
+  };
+
+  // Render time monitoring
+  const measureRenderTime = () => {
+    const startTime = performance.now();
+    
+    return () => {
+      const endTime = performance.now();
+      const renderTime = Math.round(endTime - startTime);
+      setMetrics(prev => ({ ...prev, renderTime }));
+    };
+  };
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (enabled) {
+      measureFPS();
+      const memoryInterval = setInterval(measureMemoryUsage, 2000);
+      
+      return () => {
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+        }
+        clearInterval(memoryInterval);
+      };
+    }
+  }, [enabled]);
 
-    const updateMetrics = async () => {
-      try {
-        const performanceMetrics = await performanceMonitor.getPerformanceMetrics();
-        const queueStatistics = videoQueue.getStats();
-        
-        setMetrics(performanceMetrics);
-        setQueueStats(queueStatistics);
-      } catch (error) {
-        console.warn('Failed to update performance metrics:', error);
-      }
-    };
+  // Performance warning thresholds
+  const getPerformanceStatus = () => {
+    if (metrics.fps < 30) return { status: 'poor', color: '#ff4444' };
+    if (metrics.fps < 50) return { status: 'fair', color: '#ffaa00' };
+    if (metrics.memoryUsage > 100) return { status: 'high_memory', color: '#ffaa00' };
+    return { status: 'good', color: '#44ff44' };
+  };
 
-    // Update metrics immediately
-    updateMetrics();
+  const performanceStatus = getPerformanceStatus();
 
-    // Update metrics every 2 seconds
-    const interval = setInterval(updateMetrics, 2000);
-
-    return () => clearInterval(interval);
-  }, [isVisible]);
-
-  if (!isVisible) return null;
+  if (!enabled || !showMetrics) {
+    return null;
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Performance Monitor</Text>
-      
+    <View style={[styles.container, { backgroundColor: colors.PRIMARYBLACK }]}>
+      <Text style={[styles.title, { color: colors.PRIMARYWHITE }]}>
+        Performance Monitor
+      </Text>
       <View style={styles.metricsContainer}>
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>Load Time:</Text>
-          <Text style={styles.metricValue}>{metrics.videoLoadTime?.toFixed(0) || 0}ms</Text>
+        <View style={styles.metric}>
+          <Text style={[styles.metricLabel, { color: colors.PRIMARYWHITE }]}>FPS</Text>
+          <Text style={[styles.metricValue, { color: performanceStatus.color }]}>
+            {metrics.fps}
+          </Text>
         </View>
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>Cache Hit:</Text>
-          <Text style={styles.metricValue}>{metrics.cacheHitRate?.toFixed(1) || 0}%</Text>
+        <View style={styles.metric}>
+          <Text style={[styles.metricLabel, { color: colors.PRIMARYWHITE }]}>Memory</Text>
+          <Text style={[styles.metricValue, { color: colors.PRIMARYWHITE }]}>
+            {metrics.memoryUsage}MB
+          </Text>
         </View>
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>Memory:</Text>
-          <Text style={styles.metricValue}>{metrics.memoryUsage || 0}MB</Text>
-        </View>
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>FPS:</Text>
-          <Text style={styles.metricValue}>{metrics.frameRate || 60}</Text>
-        </View>
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>Queue:</Text>
-          <Text style={styles.metricValue}>{queueStats.total || 0} total</Text>
-        </View>
-        
-        <View style={styles.metricRow}>
-          <Text style={styles.metricLabel}>Visible:</Text>
-          <Text style={styles.metricValue}>{queueStats.visible || 0} videos</Text>
+        <View style={styles.metric}>
+          <Text style={[styles.metricLabel, { color: colors.PRIMARYWHITE }]}>Render</Text>
+          <Text style={[styles.metricValue, { color: colors.PRIMARYWHITE }]}>
+            {metrics.renderTime}ms
+          </Text>
         </View>
       </View>
+      <Text style={[styles.status, { color: performanceStatus.color }]}>
+        Status: {performanceStatus.status}
+      </Text>
     </View>
   );
 };
@@ -81,34 +140,37 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 8,
     borderRadius: 8,
-    padding: 12,
-    minWidth: 200,
-    zIndex: 1000,
+    minWidth: 120,
+    zIndex: 9999,
   },
   title: {
-    color: '#ffffff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   metricsContainer: {
-    gap: 4,
-  },
-  metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  metric: {
     alignItems: 'center',
+    flex: 1,
   },
   metricLabel: {
-    color: '#cccccc',
-    fontSize: 12,
+    fontSize: 10,
+    marginBottom: 2,
   },
   metricValue: {
-    color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: 'bold',
+  },
+  status: {
+    fontSize: 10,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

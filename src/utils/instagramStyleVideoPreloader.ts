@@ -78,7 +78,6 @@ class InstagramStyleVideoPreloader {
     this.preloadStates.set(videoId, preloadState);
     this.preloadQueue[priority].push(videoId);
     
-    console.log(`📋 Added ${videoId} to ${priority} preload queue`);
   }
 
   // Get preloaded video URL (blocking until ready)
@@ -86,7 +85,6 @@ class InstagramStyleVideoPreloader {
     const state = this.preloadStates.get(videoId);
     
     if (!state) {
-      console.warn(`Video ${videoId} not in preload queue`);
       return '';
     }
 
@@ -107,7 +105,6 @@ class InstagramStyleVideoPreloader {
         state.lastAccessed = Date.now();
         return state.videoUrl;
       } catch (error) {
-        console.error(`Preload failed for ${videoId}:`, error);
         return state.videoUrl; // Return URL anyway
       }
     }
@@ -130,15 +127,12 @@ class InstagramStyleVideoPreloader {
       await preloadPromise;
       state.isReady = true;
       state.bufferSize = INSTAGRAM_PRELOAD_CONFIG.targetBufferSize;
-      console.log(`✅ Video ${videoId} preloaded successfully`);
     } catch (error) {
-      console.error(`❌ Preload failed for ${videoId}:`, error);
       state.isPreloading = false;
       
       // Retry logic
       if (state.retryCount < INSTAGRAM_PRELOAD_CONFIG.retryAttempts) {
         state.retryCount++;
-        console.log(`🔄 Retrying preload for ${videoId} (attempt ${state.retryCount})`);
         setTimeout(() => this.preloadVideo(videoId), INSTAGRAM_PRELOAD_CONFIG.retryDelay);
       }
     }
@@ -153,29 +147,23 @@ class InstagramStyleVideoPreloader {
     try {
       const cachedPath = await instagramVideoCache.getVideoStream(videoId, state.videoUrl);
       if (cachedPath !== state.videoUrl) {
-        console.log(`🎯 Strategy 1 success: ${videoId} cached`);
         return;
       }
     } catch (error) {
-      console.log(`Strategy 1 failed for ${videoId}:`, error);
     }
 
     // Strategy 2: Direct fetch with range requests
     try {
       await this.preloadWithRangeRequests(videoId, state.videoUrl);
-      console.log(`🎯 Strategy 2 success: ${videoId} range-loaded`);
       return;
     } catch (error) {
-      console.log(`Strategy 2 failed for ${videoId}:`, error);
     }
 
     // Strategy 3: Simple fetch (fallback)
     try {
       await this.preloadWithSimpleFetch(videoId, state.videoUrl);
-      console.log(`🎯 Strategy 3 success: ${videoId} simple-loaded`);
       return;
     } catch (error) {
-      console.log(`Strategy 3 failed for ${videoId}:`, error);
     }
 
     throw new Error(`All preload strategies failed for ${videoId}`);
@@ -318,7 +306,6 @@ class InstagramStyleVideoPreloader {
     for (const [videoId, state] of this.preloadStates) {
       if (now - state.lastAccessed > maxAge) {
         this.preloadStates.delete(videoId);
-        console.log(`🧹 Cleaned up old preload state: ${videoId}`);
       }
     }
   }

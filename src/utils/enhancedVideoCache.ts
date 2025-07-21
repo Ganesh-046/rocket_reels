@@ -59,9 +59,7 @@ class EnhancedVideoCache {
       await this.cleanup();
 
       this.isInitialized = true;
-      console.log('🎬 Enhanced video cache initialized');
     } catch (error) {
-      console.error('Failed to initialize video cache:', error);
     }
   }
 
@@ -73,7 +71,6 @@ class EnhancedVideoCache {
         this.metadata = new Map(parsed);
       }
     } catch (error) {
-      console.error('Failed to load cache metadata:', error);
       this.metadata = new Map();
     }
   }
@@ -83,7 +80,6 @@ class EnhancedVideoCache {
       const serialized = JSON.stringify(Array.from(this.metadata.entries()));
       cacheStorage.set('videoCacheMetadata', serialized);
     } catch (error) {
-      console.error('Failed to save cache metadata:', error);
     }
   }
 
@@ -109,7 +105,6 @@ class EnhancedVideoCache {
 
       return metadata.path;
     } catch (error) {
-      console.error('Error checking cached video:', error);
       return null;
     }
   }
@@ -138,7 +133,6 @@ class EnhancedVideoCache {
         progress: (res) => {
           const progressPercent = (res.bytesWritten / res.contentLength) * 100;
           if (progressPercent % 25 === 0) { // Log every 25%
-            console.log(`📥 Downloading ${videoId}: ${progressPercent.toFixed(0)}%`);
           }
         },
         headers: {
@@ -166,11 +160,9 @@ class EnhancedVideoCache {
         this.metadata.set(videoId, metadata);
         this.saveMetadata();
 
-        console.log(`✅ Video cached: ${videoId} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
         return videoPath;
       }
     } catch (error) {
-      console.error('Video caching error:', error);
     }
 
     return videoUrl; // Fallback to original URL
@@ -185,9 +177,7 @@ class EnhancedVideoCache {
 
     try {
       await Promise.allSettled(preloadPromises);
-      console.log(`🚀 Preloaded ${videos.length} videos`);
     } catch (error) {
-      console.error('Preload error:', error);
     }
   }
 
@@ -196,7 +186,6 @@ class EnhancedVideoCache {
     const threshold = this.config.maxSize * this.config.cleanupThreshold;
 
     if (currentSize > threshold) {
-      console.log(`🧹 Cache cleanup triggered (${(currentSize / 1024 / 1024).toFixed(2)}MB > ${(threshold / 1024 / 1024).toFixed(2)}MB)`);
       await this.cleanup();
     }
   }
@@ -235,16 +224,12 @@ class EnhancedVideoCache {
           await RNFS.unlink(metadata.path);
           this.metadata.delete(id);
           currentSize -= metadata.size;
-          console.log(`🗑️ Cleaned up video: ${id}`);
         } catch (error) {
-          console.error(`Failed to cleanup video ${id}:`, error);
         }
       }
 
       this.saveMetadata();
-      console.log(`🧹 Cache cleanup completed. Size: ${(currentSize / 1024 / 1024).toFixed(2)}MB`);
     } catch (error) {
-      console.error('Cache cleanup error:', error);
     }
   }
 
@@ -253,7 +238,6 @@ class EnhancedVideoCache {
       const entries = Array.from(this.metadata.values());
       return entries.reduce((total, metadata) => total + metadata.size, 0);
     } catch (error) {
-      console.error('Error calculating cache size:', error);
       return 0;
     }
   }
@@ -292,7 +276,6 @@ class EnhancedVideoCache {
         mostAccessed,
       };
     } catch (error) {
-      console.error('Error getting cache stats:', error);
       return {
         totalSize: 0,
         videoCount: 0,
@@ -310,7 +293,6 @@ class EnhancedVideoCache {
         try {
           await RNFS.unlink(metadata.path);
         } catch (error) {
-          console.error(`Failed to delete ${metadata.path}:`, error);
         }
       });
 
@@ -320,9 +302,7 @@ class EnhancedVideoCache {
       this.metadata.clear();
       this.saveMetadata();
       
-      console.log('🧹 Cache cleared completely');
     } catch (error) {
-      console.error('Error clearing cache:', error);
     }
   }
 
@@ -333,10 +313,8 @@ class EnhancedVideoCache {
         await RNFS.unlink(metadata.path);
         this.metadata.delete(videoId);
         this.saveMetadata();
-        console.log(`🗑️ Removed video from cache: ${videoId}`);
       }
     } catch (error) {
-      console.error(`Error removing video ${videoId}:`, error);
     }
   }
 
@@ -347,7 +325,6 @@ class EnhancedVideoCache {
       
       // If cache is getting large, perform intelligent cleanup
       if (stats.totalSize > this.config.maxSize * 0.8) {
-        console.log('🧠 Smart cache management triggered');
         
         // Remove least accessed videos first
         const entries = Array.from(this.metadata.entries());
@@ -361,10 +338,8 @@ class EnhancedVideoCache {
           await this.removeVideo(id);
         }
         
-        console.log(`🧠 Smart cleanup removed ${removeCount} videos`);
       }
     } catch (error) {
-      console.error('Smart cache management error:', error);
     }
   }
 
@@ -387,7 +362,6 @@ class EnhancedVideoCache {
     );
 
     Promise.allSettled(lowPriorityPromises).then(() => {
-      console.log(`🚀 Priority preload completed: ${highPriority.length} high, ${lowPriority.length} low`);
     });
   }
 }

@@ -127,6 +127,7 @@ const SignupScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
             if (updateResponse.status && updateResponse.data) {
               // Login with the updated user data
               login(updateResponse.data, token);
+              // Navigate to main app
               navigation.replace('Main');
             } else {
               Alert.alert('Error', 'Failed to complete signup. Please try again.');
@@ -136,7 +137,8 @@ const SignupScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
           }
         } else {
           // Direct signup without OTP verification
-          login(response.data, 'temp-token'); // You might need to handle this differently
+          login(response.data, response.data.token);
+          // Navigate to main app
           navigation.replace('Main');
         }
       } else {

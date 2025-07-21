@@ -234,7 +234,6 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
           setVideoCached(item.id, cachedPath);
         }
       } catch (error) {
-        console.warn('Video preload failed:', error);
       }
     };
 
@@ -308,7 +307,6 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
   }, [item.id, updateVideoState]);
 
   const onError = useCallback((error: any) => {
-    console.error('Video error:', error);
     updateVideoState(item.id, { error: error.error?.errorString || 'Video playback error' });
   }, [item.id, updateVideoState]);
 
@@ -370,7 +368,6 @@ const ReelCard: React.FC<ReelCardProps> = memo(({
       scaleValue.value = withSpring(1);
     });
 
-    console.log(`${newPlayingState ? '▶️' : '⏸️'} Video ${item.id} ${newPlayingState ? 'playing' : 'paused'}`);
   }, [item.id, isPlaying, setVideoPlaying, scaleValue, showControlsWithTimer]);
 
   const handleLikePress = useCallback(() => {

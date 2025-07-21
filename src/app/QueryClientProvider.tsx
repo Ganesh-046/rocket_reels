@@ -2,6 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider as TanStackQueryClientProvider } from '@tanstack/react-query';
 
 // Create a client with optimized settings for video platform
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -12,7 +13,7 @@ const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: false, // Don't refetch when app comes to foreground
       refetchOnReconnect: true, // Refetch when network reconnects
-      refetchOnMount: false, // Don't refetch on component mount if data exists
+      refetchOnMount: true, // Enable refetch on component mount for debugging
     },
     mutations: {
       retry: 1, // Retry mutations once
@@ -21,11 +22,13 @@ const queryClient = new QueryClient({
   },
 });
 
+
 interface QueryClientProviderProps {
   children: React.ReactNode;
 }
 
 const QueryClientProvider: React.FC<QueryClientProviderProps> = ({ children }) => {
+  
   return (
     <TanStackQueryClientProvider client={queryClient}>
       {children}

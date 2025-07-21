@@ -53,7 +53,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
           { text: 'Cancel', style: 'cancel' },
           { 
             text: 'Sign In', 
-            onPress: () => navigation.navigate('AuthStack')
+            onPress: () => navigation.navigate('Auth')
           },
         ]
       );
@@ -73,7 +73,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
           { text: 'Cancel', style: 'cancel' },
           { 
             text: 'Sign In', 
-            onPress: () => navigation.navigate('AuthStack')
+            onPress: () => navigation.navigate('Auth')
           },
         ]
       );
@@ -93,7 +93,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
           { text: 'Cancel', style: 'cancel' },
           { 
             text: 'Sign In', 
-            onPress: () => navigation.navigate('AuthStack')
+            onPress: () => navigation.navigate('Auth')
           },
         ]
       );
@@ -118,7 +118,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
           { text: 'Cancel', style: 'cancel' },
           { 
             text: 'Sign In', 
-            onPress: () => navigation.navigate('AuthStack')
+            onPress: () => navigation.navigate('Auth')
           },
         ]
       );
@@ -152,7 +152,12 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
       style={styles.episodeCard}
       onPress={() => handleEpisodePress(item.id)}
     >
-      <Image source={{ uri: item.image }} style={styles.episodeImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Episode' 
+        }} 
+        style={styles.episodeImage} 
+      />
       <View style={styles.episodeInfo}>
         <Text style={styles.episodeTitle}>{item.title}</Text>
         <Text style={styles.episodeDuration}>{item.duration}</Text>
@@ -166,7 +171,12 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
       style={styles.castCard}
       onPress={() => handleCastPress(item.id)}
     >
-      <Image source={{ uri: item.image }} style={styles.castImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Cast' 
+        }} 
+        style={styles.castImage} 
+      />
       <Text style={styles.castName}>{item.name}</Text>
       <Text style={styles.castRole}>{item.role}</Text>
     </TouchableOpacity>
@@ -202,7 +212,12 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header Image */}
         <View style={styles.headerSection}>
-          <Image source={{ uri: content.image || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Movie+Poster' }} style={styles.headerImage} />
+          <Image 
+            source={{ 
+              uri: content.imageUri || content.image || content.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Movie+Poster' 
+            }} 
+            style={styles.headerImage} 
+          />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.8)']}
             style={styles.headerOverlay}
@@ -313,7 +328,12 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
                 style={styles.relatedCard}
                 onPress={() => navigation.navigate('Detail', { movieId: item.id })}
               >
-                <Image source={{ uri: item.image }} style={styles.relatedImage} />
+                <Image 
+                  source={{ 
+                    uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Related' 
+                  }} 
+                  style={styles.relatedImage} 
+                />
                 <Text style={styles.relatedTitle}>{item.title}</Text>
               </TouchableOpacity>
             )}

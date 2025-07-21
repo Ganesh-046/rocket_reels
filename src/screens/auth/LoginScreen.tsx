@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useLogin, useOTPVerification, useUpdateUser, useCountries } from '../../hooks/useAuth';
-import { useAuthActions } from '../../store/auth.store';
-import { Country, UserSignupRequest } from '../../types/api';
-import { getUniqueId } from 'react-native-device-info';
-import { getMessaging } from '@react-native-firebase/messaging';
+import { useLogin, useOTPVerification, useUpdateUser } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/auth.store';
+import { SignupRequest } from '../../types/api';
 import DateTimePicker from 'react-native-modal-datetime-picker';
 import moment from 'moment';
+import { NavigationService } from '../../navigation/NavigationService';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,9 +32,15 @@ const genderOptions = [
   { label: 'Female', value: 'female' }
 ];
 
-const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+type LoginScreenNavigationProp = StackNavigationProp<any>;
+
+interface LoginScreenProps {
+  navigation: LoginScreenNavigationProp;
+}
+
+const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { login, setNewUser } = useAuthActions();
+  const { login, setNewUser } = useAuthStore();
 
   // States
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -44,8 +50,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isType, setIsType] = useState(false);
-  const [isEmpty, setIsEmpty] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -57,16 +61,16 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     dob: '',
     referralCode: '',
     countryCode: { name: 'India', code: '+91' },
-    deviceToken: '',
+    deviceToken: 'default-device-token',
     deviceType: Platform.OS,
-    firebaseToken: '',
+    firebaseToken: 'default-firebase-token',
   });
 
   // Hooks
   const loginMutation = useLogin();
   const otpMutation = useOTPVerification();
   const updateUserMutation = useUpdateUser();
-  const { data: countriesData } = useCountries();
+  // const { data: countriesData } = useCountries(); // Temporarily commented out
 
   // Animations
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -87,10 +91,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Get device info
-    getDeviceInfo();
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   useEffect(() => {
     // Timer for OTP
@@ -102,21 +103,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   // Functions
-  const getDeviceInfo = async () => {
-    try {
-      const deviceToken = await getUniqueId();
-      const fcmToken = await getMessaging().getToken();
-      
-      setFormData(prev => ({
-        ...prev,
-        deviceToken,
-        firebaseToken: fcmToken,
-      }));
-    } catch (error) {
-      console.error('Error getting device info:', error);
-    }
-  };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -124,39 +110,130 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }));
   };
 
+  // Simple connectivity test
+  const testConnectivity = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('https://k9456pbd.rocketreel.co.in/api/v1/content/activeCountries', {
+        method: 'GET',
+        headers: {
+          'public-request': 'true',
+        },
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('❌ Connectivity test failed:', error);
+      return false;
+    }
+  };
+
   const handleSendOTP = async () => {
+
+    console.log("✅ formData",formData)
+    
     if (!formData.mobileNumber.trim()) {
       Alert.alert('Error', 'Please enter your mobile number');
       return;
     }
 
-    if (!formData.countryCode) {
+    if (!formData.countryCode || !formData.countryCode.code) {
       Alert.alert('Error', 'Please select your country');
+      return;
+    }
+
+    // Additional validation for country code
+    const callingCode = formData.countryCode.code?.trim();
+    if (!callingCode) {
+      Alert.alert('Error', 'Invalid country code. Please select your country again.');
       return;
     }
 
     try {
       setLoading(true);
+      
+      // Test connectivity first
+      const isConnected = await testConnectivity();
+      if (!isConnected) {
+        Alert.alert(
+          'Connection Error',
+          'Cannot reach the server. Please check your internet connection.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleSendOTP() }
+          ]
+        );
+        return;
+      }
+      
+      // Debug: Log request details
+      console.log('🔐 Sending OTP Request:', {
+        mobileNo: formData.mobileNumber.trim(),
+        callingCode: callingCode,
+        deviceToken: formData.deviceToken,
+        deviceType: formData.deviceType,
+        firebaseToken: formData.firebaseToken,
+        timestamp: new Date().toISOString(),
+      });
+      
       const response = await loginMutation.mutateAsync({
         mobileNo: formData.mobileNumber.trim(),
-        callingCode: formData.countryCode.code,
+        callingCode: callingCode,
       });
 
-      if (response.status) {
+      console.log("✅ response send otp",response)
+
+      // Debug: Log response details
+      console.log('✅ OTP Response:', {
+        status: response?.status,
+        data: response?.data,
+        message: response?.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (response?.status === 200) {
         setStep(2);
         setTimeRemaining(60);
         
         // Auto-fill OTP for test numbers
         if (['7991585758', '9321803068', '8291042128'].includes(formData.mobileNumber)) {
-          handleInputChange('otp', JSON.stringify(response.data));
+          handleInputChange('otp', response.data?.toString() || '');
         }
         
-        Alert.alert('Success', 'OTP sent to your mobile number');
+        // Removed alert - directly proceed to OTP screen
       } else {
-        Alert.alert('Error', response.message || 'Failed to send OTP');
+        const errorMessage = response?.message || 'Failed to send OTP';
+        Alert.alert('Error', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Send OTP Error:', {
+        error: error?.message || error,
+        status: error?.status,
+        statusText: error?.statusText,
+        response: error?.response,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Handle specific error types
+      if (error?.status === 500) {
+        Alert.alert(
+          'Server Error', 
+          'Server is temporarily unavailable. Please try again in a few minutes.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleSendOTP() }
+          ]
+        );
+      } else if (error?.message && (error.message.includes('timeout') || error.message.includes('Request timeout'))) {
+        Alert.alert(
+          'Connection Timeout', 
+          'Request timed out. Please check your internet connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleSendOTP() }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -168,31 +245,89 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
+    // Validate country code
+    if (!formData.countryCode || !formData.countryCode.code) {
+      Alert.alert('Error', 'Please select your country');
+      return;
+    }
+
+    const callingCode = formData.countryCode.code?.trim();
+    if (!callingCode) {
+      Alert.alert('Error', 'Invalid country code. Please select your country again.');
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await otpMutation.mutateAsync({
         mobileNo: formData.mobileNumber.trim(),
         otp: formData.otp.trim(),
-        deviceType: formData.deviceType,
+        callingCode: callingCode,
         deviceToken: formData.deviceToken,
+        deviceType: formData.deviceType,
         firebaseToken: formData.firebaseToken,
       });
 
-      if (response.status && response.data) {
-        if (response.data.isNew) {
-          setUserId(response.data.userId);
-          setToken(response.data.token);
-          setStep(3);
+      if (response?.status === 200 && response?.data) {
+        // Check if response.data is an object (for OTP verification) or a number (for OTP send)
+        if (typeof response.data === 'object' && response.data !== null) {
+          if (response.data.isNew) {
+            setUserId(response.data.userId);
+            setToken(response.data.token);
+            setStep(3);
+          } else {
+            // Existing user - login directly
+            if (response.data.user) {
+              login(response.data.user, response.data.token);
+            } else {
+              // If user data is not in response, we need to fetch it
+              login({ _id: response.data.userId } as any, response.data.token);
+            }
+            // Add small delay to ensure auth state is updated
+            setTimeout(() => {
+              try {
+                NavigationService.navigate('Main');
+              } catch (navError) {
+                console.log('Navigation error:', navError);
+                // Fallback navigation
+                NavigationService.reset('Main');
+              }
+            }, 100);
+          }
         } else {
-          // Existing user - login directly
-          login(response.data, response.data.token);
-          navigation.replace('Main');
+          // This is the OTP send response (response.data is a number)
+          console.log('OTP sent successfully, data:', response.data);
+          Alert.alert('Success', 'OTP sent to your mobile number');
         }
       } else {
-        Alert.alert('Error', response.message || 'Invalid OTP');
+        const errorMessage = response?.message || 'Invalid OTP';
+        Alert.alert('Error', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to verify OTP. Please try again.');
+    } catch (error: any) {
+      console.error('Verify OTP Error:', error);
+      
+      // Handle specific error types
+      if (error?.status === 500) {
+        Alert.alert(
+          'Server Error', 
+          'Server is temporarily unavailable. Please try again in a few minutes.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleVerifyOTP() }
+          ]
+        );
+      } else if (error?.message && (error.message.includes('timeout') || error.message.includes('Request timeout'))) {
+        Alert.alert(
+          'Connection Timeout', 
+          'Request timed out. Please check your internet connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleVerifyOTP() }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to verify OTP. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -227,15 +362,15 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     try {
       setLoading(true);
-      const signupData: UserSignupRequest = {
+      const signupData: SignupRequest = {
         userName: formData.name.trim(),
         userEmail: formData.email.trim(),
-        gender: formData.gender,
-        dateOfBirth: formData.dob,
         mobileNo: formData.mobileNumber.trim(),
-        referralCode: formData.referralCode?.trim() || '',
-        countryName: formData.countryCode.name,
         callingCode: formData.countryCode.code,
+        gender: formData.gender as 'male' | 'female' | 'other',
+        dateOfBirth: formData.dob,
+        countryName: formData.countryCode.name,
+        referralCode: formData.referralCode || undefined,
       };
 
       const response = await updateUserMutation.mutateAsync({
@@ -243,14 +378,47 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         data: signupData,
       });
 
-      if (response.status && response.data) {
+      if (response?.status === 200 && response?.data) {
         login(response.data, token);
-        navigation.replace('Main');
+        // Add small delay to ensure auth state is updated
+        setTimeout(() => {
+          try {
+            NavigationService.navigate('Main');
+          } catch (navError) {
+            console.log('Navigation error:', navError);
+            // Fallback navigation
+            NavigationService.reset('Main');
+          }
+        }, 100);
       } else {
-        Alert.alert('Error', response.message || 'Failed to complete registration');
+        const errorMessage = response?.message || 'Failed to complete registration';
+        Alert.alert('Error', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to complete registration. Please try again.');
+    } catch (error: any) {
+      console.error('Complete Registration Error:', error);
+      
+      // Handle specific error types
+      if (error?.status === 500) {
+        Alert.alert(
+          'Server Error', 
+          'Server is temporarily unavailable. Please try again in a few minutes.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleCompleteRegistration() }
+          ]
+        );
+      } else if (error?.message?.includes('timeout') || error?.message?.includes('Request timeout')) {
+        Alert.alert(
+          'Connection Timeout', 
+          'Request timed out. Please check your internet connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleCompleteRegistration() }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to complete registration. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -264,14 +432,40 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         callingCode: formData.countryCode.code,
       });
 
-      if (response.status) {
+      console.log("response resend otp",response)
+
+      if (response?.status === 200) {
         setTimeRemaining(60);
         Alert.alert('Success', 'OTP resent successfully');
       } else {
-        Alert.alert('Error', response.message || 'Failed to resend OTP');
+        const errorMessage = response?.message || 'Failed to resend OTP';
+        Alert.alert('Error', errorMessage);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+    } catch (error: any) {
+      console.error('Resend OTP Error:', error);
+      
+      // Handle specific error types
+      if (error?.status === 500) {
+        Alert.alert(
+          'Server Error', 
+          'Server is temporarily unavailable. Please try again in a few minutes.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleResendOTP() }
+          ]
+        );
+      } else if (error?.message && (error.message.includes('timeout') || error.message.includes('Request timeout'))) {
+        Alert.alert(
+          'Connection Timeout', 
+          'Request timed out. Please check your internet connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleResendOTP() }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -477,8 +671,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
         </View>
 
-        {(!isType || isEmpty) && (
-          <View style={styles.formFieldContainer}>
+        {/* Removed isType and isEmpty state, so this block is always rendered */}
+        <View style={styles.formFieldContainer}>
             <Text style={styles.fieldLabel}>Email Address</Text>
             <TextInput
               style={styles.formInput}
@@ -490,7 +684,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               autoCapitalize="none"
             />
           </View>
-        )}
 
         <View style={styles.rowContainer}>
           <View style={styles.halfWidth}>
@@ -572,11 +765,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <Image
-              style={styles.logo}
-              source={require('../../assets/images/logo.png')}
-              resizeMode="contain"
-            />
+            <Text style={styles.logoText}>Rocket Reels</Text>
+            <Text style={styles.logoSubtext}>Watch. Share. Connect.</Text>
           </View>
 
           <View style={styles.glassCard}>
@@ -605,20 +795,30 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.modalOverlay}>
             <View style={styles.countryPickerModal}>
               <Text style={styles.modalTitle}>Select Country</Text>
-              {countriesData?.data?.slice(0, 10).map((country: Country) => (
+              {/* Static country options */}
+              {[
+                { countryName: 'India', callingCode: '+91' },
+                { countryName: 'United States', callingCode: '+1' },
+                { countryName: 'United Kingdom', callingCode: '+44' },
+                { countryName: 'Canada', callingCode: '+1' },
+                { countryName: 'Australia', callingCode: '+61' },
+              ].map((country, index) => (
                 <TouchableOpacity
-                  key={country._id}
+                  key={index}
                   style={styles.countryOption}
                   onPress={() => {
                     setShowCountryPicker(false);
-                    handleInputChange('countryCode', {
-                      name: country.name,
-                      code: country.callingCode,
-                    });
+                    setFormData(prev => ({
+                      ...prev,
+                      countryCode: {
+                        name: country.countryName,
+                        code: country.callingCode,
+                      }
+                    }));
                   }}
                 >
                   <Text style={styles.countryOptionText}>
-                    {country.name} ({country.callingCode})
+                    {country.countryName} ({country.callingCode})
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -665,9 +865,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  logo: {
-    width: width * 0.3,
-    height: width * 0.3,
+  logoText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  logoSubtext: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 4,
   },
   glassCard: {
     borderRadius: 16,

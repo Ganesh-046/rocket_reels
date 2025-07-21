@@ -41,7 +41,6 @@ class AdaptiveQualitySelector {
     this.networkType = 'wifi'; // Default assumption
     this.bandwidth = this.estimateBandwidth();
     
-    console.log(`🌐 Network initialized: ${this.networkType}, estimated bandwidth: ${this.bandwidth}kbps`);
   }
 
   private estimateBandwidth(): number {
@@ -150,7 +149,6 @@ class AdaptiveQualitySelector {
 
     const selectedQuality = qualities[optimalIndex];
     
-    console.log(`🎯 Selected quality: ${selectedQuality.label} (${selectedQuality.bitrate}kbps) for ${this.bandwidth}kbps bandwidth`);
     
     return selectedQuality;
   }
@@ -240,7 +238,6 @@ class AdaptiveQualitySelector {
   // Force quality selection
   setQuality(quality: string) {
     this.currentQuality = quality;
-    console.log(`🎯 Quality manually set to: ${quality}`);
   }
 
   // Get current quality setting
@@ -251,7 +248,6 @@ class AdaptiveQualitySelector {
   // Clear quality cache
   clearQualityCache(): void {
     this.qualityCache.clear();
-    console.log('🧹 Quality cache cleared');
   }
 
   // Get quality cache statistics

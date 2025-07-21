@@ -83,7 +83,7 @@ export const usePerformanceOptimization = (
         
         videosToRemove.forEach(([videoId]) => {
           // This would be handled by the video store cleanup
-          console.log(`🧹 Cleaning up video: ${videoId}`);
+      
         });
       }
     });
@@ -101,7 +101,7 @@ export const usePerformanceOptimization = (
       // Trigger garbage collection on Android
       if (Platform.OS === 'android') {
         // In a real app, you might use a native module to trigger GC
-        console.log('🔄 Triggering memory optimization');
+    
       }
       
       // Log memory usage
@@ -128,7 +128,7 @@ export const usePerformanceOptimization = (
       // Optimize based on scroll position
       if (currentIndex > totalItems * 0.8) {
         // Near end of list, start prefetching more content
-        console.log('📜 Near end of list, triggering prefetch');
+    
       }
       
       // Cleanup old videos if scrolled significantly
@@ -167,7 +167,7 @@ export const usePerformanceOptimization = (
   const updateActiveVideo = useCallback((index: number, videoId: string) => {
     // Update current video in store
     // This would be handled by the video store
-    console.log(`🎬 Active video changed: ${videoId} at index ${index}`);
+
   }, []);
 
   // Performance tracking
@@ -176,7 +176,7 @@ export const usePerformanceOptimization = (
     
     isTracking.current = true;
     performanceStartTime.current = Date.now();
-    console.log('📊 Performance tracking started');
+
   }, []);
 
   const endPerformanceTracking = useCallback(() => {
@@ -184,7 +184,7 @@ export const usePerformanceOptimization = (
     
     isTracking.current = false;
     const duration = Date.now() - performanceStartTime.current;
-    console.log(`📊 Performance tracking ended. Duration: ${duration}ms`);
+
     
     // Log performance summary
     performanceMonitor.logPerformanceSummary();
@@ -194,7 +194,7 @@ export const usePerformanceOptimization = (
   const clearCache = useCallback(() => {
     clearVideoCache();
     prefetchManager.clearPrefetchQueue();
-    console.log('🗑️ Cache cleared');
+
   }, [clearVideoCache]);
 
   const getCacheStats = useCallback(async () => {

@@ -21,24 +21,24 @@ const onboardingData = [
     title: 'Welcome to Rocket Reels',
     subtitle: 'Your ultimate entertainment destination',
     description: 'Discover thousands of movies, TV shows, and exclusive content tailored just for you.',
-    image: require('../assets/images/onboarding-1.png'),
     icon: 'movie',
+    iconSize: 120,
   },
   {
     id: 2,
     title: 'Watch Anywhere',
     subtitle: 'Stream on all your devices',
     description: 'Enjoy your favorite content on mobile, tablet, or TV. Download for offline viewing.',
-    image: require('../assets/images/onboarding-2.png'),
     icon: 'devices',
+    iconSize: 120,
   },
   {
     id: 3,
     title: 'Earn Rewards',
     subtitle: 'Get rewarded for watching',
     description: 'Watch ads, complete tasks, and earn coins to unlock premium content and features.',
-    image: require('../assets/images/onboarding-3.png'),
     icon: 'card-giftcard',
+    iconSize: 120,
   },
 ];
 
@@ -63,8 +63,8 @@ const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleGetStarted = () => {
-    // Navigate to main app
-    navigation.replace('MainStack');
+    // Navigate to auth stack since user is not authenticated yet
+    navigation.replace('Auth');
   };
 
   const handleScroll = (event: any) => {
@@ -93,14 +93,10 @@ const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     return (
       <View key={item.id} style={styles.card}>
         <View style={styles.imageContainer}>
-          <Image source={item.image} style={styles.image} resizeMode="contain" />
+          <Icon name={item.icon} size={item.iconSize} color="#ffffff" />
         </View>
         
         <View style={styles.contentContainer}>
-          <View style={styles.iconContainer}>
-            <Icon name={item.icon} size={48} color="#ed9b72" />
-          </View>
-          
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.subtitle}>{item.subtitle}</Text>
           <Text style={styles.description}>{item.description}</Text>

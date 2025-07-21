@@ -3,6 +3,7 @@
 // ============================================================================
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { API_CONFIG, ENDPOINTS } from '../config/api';
 import {
   // Authentication Types
   LoginSignupResponse,
@@ -55,9 +56,9 @@ import {
 // API CONFIGURATION
 // ============================================================================
 
-const API_CONFIG = {
-  baseURL: 'https://api.rocketreels.com/v1', // Replace with your actual API base URL
-  timeout: 30000,
+const SERVICE_CONFIG = {
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -73,7 +74,7 @@ class ApiService {
   private token: string | null = null;
 
   constructor() {
-    this.api = axios.create(API_CONFIG);
+    this.api = axios.create(SERVICE_CONFIG);
     this.setupInterceptors();
   }
 
@@ -86,21 +87,23 @@ class ApiService {
     this.api.interceptors.request.use(
       (config) => {
         if (this.token) {
-          config.headers.Authorization = `Bearer ${this.token}`;
+          config.headers.accesstoken = this.token;
         }
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        return Promise.reject(error);
+      }
     );
 
     // Response interceptor for error handling
     this.api.interceptors.response.use(
-      (response: AxiosResponse) => response,
+      (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Handle unauthorized access
+        if (error?.response?.status === 401) {
+          // Handle token expiration
           this.clearToken();
-          // You can dispatch a logout action here
+          // You can add navigation logic here if needed
         }
         return Promise.reject(error);
       }
@@ -124,37 +127,42 @@ class ApiService {
   // ============================================================================
 
   async login(data: LoginRequest): Promise<ApiResponse<LoginSignupResponse>> {
-    const response = await this.api.post('/auth/login', data);
+    const response = await this.api.post(ENDPOINTS.AUTH.LOGIN, data);
     return response.data;
   }
 
   async verifyOTP(data: OTPVerificationRequest): Promise<ApiResponse<LoginSignupResponse>> {
-    const response = await this.api.post('/auth/verify-otp', data);
+    const response = await this.api.post(ENDPOINTS.AUTH.VERIFY_OTP, data);
     return response.data;
   }
 
   async signup(data: SignupRequest): Promise<ApiResponse<LoginSignupResponse>> {
-    const response = await this.api.post('/auth/signup', data);
+    const response = await this.api.post(ENDPOINTS.AUTH.SIGNUP, data);
     return response.data;
   }
 
   async getUserProfile(userId: string): Promise<ApiResponse<UserProfile>> {
-    const response = await this.api.get(`/auth/profile/${userId}`);
+    const response = await this.api.get(`${ENDPOINTS.AUTH.GET_USER_INFO}/${userId}`);
     return response.data;
   }
 
   async updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
-    const response = await this.api.put(`/auth/profile/${userId}`, data);
+    const response = await this.api.put(`${ENDPOINTS.AUTH.UPDATE_PROFILE}/${userId}`, data);
+    return response.data;
+  }
+
+  async updateUserProfilePublic(userId: string, data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
+    const response = await this.api.put(`${ENDPOINTS.AUTH.UPDATE_USER}/${userId}`, data);
     return response.data;
   }
 
   async getActiveCountries(): Promise<ApiResponse<ActiveCountry[]>> {
-    const response = await this.api.get('/auth/countries');
+    const response = await this.api.get(ENDPOINTS.AUTH.GET_ACTIVE_COUNTRIES);
     return response.data;
   }
 
   async deleteAccount(userId: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.delete(`/auth/account/${userId}`);
+    const response = await this.api.delete(`${ENDPOINTS.AUTH.DELETE_ACCOUNT}/${userId}`);
     return response.data;
   }
 
@@ -163,52 +171,78 @@ class ApiService {
   // ============================================================================
 
   async getContentList(params: ContentListRequest): Promise<ApiResponse<ContentListResponse>> {
-    const response = await this.api.get('/content/list', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.LIST, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getContentDetails(contentId: string): Promise<ApiResponse<ContentDetailResponse>> {
-    const response = await this.api.get(`/content/${contentId}`);
+    const response = await this.api.get(`${ENDPOINTS.CONTENT.DETAILS}/${contentId}`, {
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getTrailerList(params: { page?: number; limit?: number }): Promise<ApiResponse<TrailerListResponse>> {
-    const response = await this.api.get('/content/trailers', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.TRAILER_LIST, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getLatestContent(params: { page?: number; limit?: number }): Promise<ApiResponse<LatestContentResponse>> {
-    const response = await this.api.get('/content/latest', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.NEW_RELEASES, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getTopContent(params: { page?: number; limit?: number }): Promise<ApiResponse<TopContentResponse>> {
-    const response = await this.api.get('/content/top', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.TOP_TEN, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getUpcomingContent(params: { page?: number; limit?: number }): Promise<ApiResponse<UpcomingContentResponse>> {
-    const response = await this.api.get('/content/upcoming', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.UPCOMING, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getCustomizedContent(params: { page?: number; limit?: number }): Promise<ApiResponse<CustomizedContentResponse>> {
-    const response = await this.api.get('/content/customized', { params });
+    const response = await this.api.get(ENDPOINTS.CONTENT.CUSTOMIZED_LIST, { 
+      params,
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getBannerData(): Promise<ApiResponse<BannerItem[]>> {
-    const response = await this.api.get('/content/banners');
+    const response = await this.api.get(ENDPOINTS.CONTENT.PROMOTIONAL, {
+      headers: { 'public-request': false }
+    });
     return response.data;
   }
 
   async getGenres(): Promise<ApiResponse<Genre[]>> {
-    const response = await this.api.get('/content/genres');
+    const response = await this.api.get(ENDPOINTS.CONTENT.GENRE_LIST, {
+      headers: { 'public-request': true }
+    });
     return response.data;
   }
 
   async getLanguages(): Promise<ApiResponse<Language[]>> {
-    const response = await this.api.get('/content/languages');
+    const response = await this.api.get(ENDPOINTS.CONTENT.LANGUAGE_LIST, {
+      headers: { 'public-request': true }
+    });
     return response.data;
   }
 
@@ -217,52 +251,52 @@ class ApiService {
   // ============================================================================
 
   async getWatchlist(userId: string): Promise<ApiResponse<WatchlistItem[]>> {
-    const response = await this.api.get(`/user/${userId}/watchlist`);
+    const response = await this.api.get(ENDPOINTS.USER_INTERACTIONS.GET_WATCHLIST);
     return response.data;
   }
 
   async addToWatchlist(data: WatchlistRequest): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/user/watchlist/add', data);
+    const response = await this.api.post(ENDPOINTS.USER_INTERACTIONS.ADD_TO_WATCHLIST, data);
     return response.data;
   }
 
   async removeFromWatchlist(data: WatchlistRequest): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.delete('/user/watchlist/remove', { data });
+    const response = await this.api.delete(ENDPOINTS.USER_INTERACTIONS.REMOVE_FROM_WATCHLIST, { data });
     return response.data;
   }
 
   async likeDislikeContent(data: LikeDislikeRequest): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/user/like-dislike', data);
+    const response = await this.api.post(ENDPOINTS.USER_INTERACTIONS.LIKE_DISLIKE, data);
     return response.data;
   }
 
   async getLikedContent(userId: string): Promise<ApiResponse<string[]>> {
-    const response = await this.api.get(`/user/${userId}/liked-content`);
+    const response = await this.api.get(ENDPOINTS.USER_INTERACTIONS.GET_LIKED_CONTENT);
     return response.data;
   }
 
   async likeTrailer(userId: string, trailerId: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/user/trailer-like', { userId, trailerId });
+    const response = await this.api.post(ENDPOINTS.USER_INTERACTIONS.TRAILER_LIKE, { userId, trailerId });
     return response.data;
   }
 
   async getTrailerLikes(userId: string): Promise<ApiResponse<string[]>> {
-    const response = await this.api.get(`/user/${userId}/trailer-likes`);
+    const response = await this.api.get(ENDPOINTS.USER_INTERACTIONS.GET_TRAILER_LIKES);
     return response.data;
   }
 
   async addWatchHistory(data: WatchHistoryRequest): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/user/watch-history', data);
+    const response = await this.api.post(ENDPOINTS.CONTENT.ADD_WATCH_HISTORY, data);
     return response.data;
   }
 
   async getWatchHistory(contentId: string): Promise<ApiResponse<VideoData>> {
-    const response = await this.api.get(`/user/watch-history/${contentId}`);
+    const response = await this.api.get(`${ENDPOINTS.CONTENT.WATCH_HISTORY}/${contentId}`);
     return response.data;
   }
 
   async updateViewCount(contentId: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post(`/content/${contentId}/view`);
+    const response = await this.api.post(`${ENDPOINTS.CONTENT.UPDATE_VIEW_COUNT}/${contentId}`);
     return response.data;
   }
 
@@ -271,82 +305,82 @@ class ApiService {
   // ============================================================================
 
   async getBalance(userId: string): Promise<ApiResponse<BalanceResponse>> {
-    const response = await this.api.get(`/rewards/balance/${userId}`);
+    const response = await this.api.get(ENDPOINTS.REWARDS.BALANCE);
     return response.data;
   }
 
   async getCheckInList(): Promise<ApiResponse<CheckInDay[]>> {
-    const response = await this.api.get('/rewards/check-in-list');
+    const response = await this.api.get(ENDPOINTS.REWARDS.CHECK_IN_LIST);
     return response.data;
   }
 
   async dailyCheckIn(data: DailyCheckInRequest): Promise<ApiResponse<{ message: string; coins: number }>> {
-    const response = await this.api.post('/rewards/daily-check-in', data);
+    const response = await this.api.post(ENDPOINTS.REWARDS.DAILY_CHECK_IN, data);
     return response.data;
   }
 
   async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    const response = await this.api.get('/subscription/plans');
+    const response = await this.api.get(ENDPOINTS.SUBSCRIPTION.PLANS);
     return response.data;
   }
 
   async getVIPSubscriptions(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    const response = await this.api.get('/subscription/vip-plans');
+    const response = await this.api.get(ENDPOINTS.SUBSCRIPTION.VIP_SUBSCRIPTIONS);
     return response.data;
   }
 
   async purchaseSubscription(data: PurchaseSubscriptionRequest): Promise<ApiResponse<{ message: string; orderId: string }>> {
-    const response = await this.api.post('/subscription/purchase', data);
+    const response = await this.api.post(ENDPOINTS.SUBSCRIPTION.CREATE_ORDER, data);
     return response.data;
   }
 
   async getRechargeList(): Promise<ApiResponse<RechargePlan[]>> {
-    const response = await this.api.get('/rewards/recharge-list');
+    const response = await this.api.get(ENDPOINTS.RECHARGE.LIST);
     return response.data;
   }
 
   async createRecharge(data: RechargeRequest): Promise<ApiResponse<{ message: string; orderId: string }>> {
-    const response = await this.api.post('/rewards/recharge', data);
+    const response = await this.api.post(ENDPOINTS.RECHARGE.CREATE, data);
     return response.data;
   }
 
   async updateRechargeStatus(paymentData: { orderId: string; status: string; transactionId?: string }): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/rewards/recharge-status', paymentData);
+    const response = await this.api.post(ENDPOINTS.RECHARGE.UPDATE_STATUS, paymentData);
     return response.data;
   }
 
   async getRechargeHistory(userId: string): Promise<ApiResponse<RechargeHistoryItem[]>> {
-    const response = await this.api.get(`/rewards/recharge-history/${userId}`);
+    const response = await this.api.get(ENDPOINTS.RECHARGE.HISTORY);
     return response.data;
   }
 
   async getRewardHistory(userId: string): Promise<ApiResponse<RewardCoinHistoryItem[]>> {
-    const response = await this.api.get(`/rewards/history/${userId}`);
+    const response = await this.api.get(ENDPOINTS.REWARDS.REWARD_HISTORY);
     return response.data;
   }
 
   async getAdsCount(userId: string): Promise<ApiResponse<{ adsCount: number }>> {
-    const response = await this.api.get(`/rewards/ads-count/${userId}`);
+    const response = await this.api.get(ENDPOINTS.REWARDS.ADS_COUNT);
     return response.data;
   }
 
   async updateAdStatus(adData: { userId: string; adId: string; completed: boolean }): Promise<ApiResponse<{ message: string; coins: number }>> {
-    const response = await this.api.post('/rewards/ad-status', adData);
+    const response = await this.api.post(ENDPOINTS.REWARDS.UPDATE_AD_STATUS, adData);
     return response.data;
   }
 
   async unlockEpisodeWithCoins(data: UnlockEpisodeRequest): Promise<ApiResponse<{ message: string; coinsSpent: number }>> {
-    const response = await this.api.post('/content/unlock-coins', data);
+    const response = await this.api.post(ENDPOINTS.REWARDS.UNLOCK_COINS, data);
     return response.data;
   }
 
   async unlockEpisodeWithAds(data: UnlockEpisodeRequest): Promise<ApiResponse<{ message: string }>> {
-    const response = await this.api.post('/content/unlock-ads', data);
+    const response = await this.api.post(ENDPOINTS.REWARDS.UNLOCK_ADS, data);
     return response.data;
   }
 
   async getUnlockedEpisodes(userId: string): Promise<ApiResponse<UnlockedEpisode[]>> {
-    const response = await this.api.get(`/user/${userId}/unlocked-episodes`);
+    const response = await this.api.get(ENDPOINTS.REWARDS.UNLOCKED_EPISODES);
     return response.data;
   }
 
@@ -439,6 +473,7 @@ export const {
   signup,
   getUserProfile,
   updateUserProfile,
+  updateUserProfilePublic,
   getActiveCountries,
   deleteAccount,
 

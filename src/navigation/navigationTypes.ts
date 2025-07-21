@@ -8,4 +8,16 @@ export type RootStackParamList = {
     episodes: any[];
     initialIndex?: number;
   };
+  // Profile Screens
+  EditProfile: undefined;
+  History: undefined;
+  MyList: undefined;
+  Transaction: undefined;
+  MyWallet: undefined;
+  Refill: undefined;
+  Subscription: undefined;
+  WebView: {
+    title: string;
+    url: string;
+  };
 };

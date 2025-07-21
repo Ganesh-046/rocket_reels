@@ -47,7 +47,6 @@ class InstagramOptimizedVideoCache {
       this.loadMetadata();
       await this.cleanup();
     } catch (error) {
-      console.error('Instagram cache init error:', error);
     }
   }
 
@@ -127,7 +126,6 @@ class InstagramOptimizedVideoCache {
       try {
         await this.downloadVideo(download.id, download.url);
       } catch (error) {
-        console.error(`Download failed for ${download.id}:`, error);
       } finally {
         this.activeDownloads.delete(download.id);
       }
@@ -164,10 +162,8 @@ class InstagramOptimizedVideoCache {
         metadata.lastAccessed = Date.now();
         this.saveMetadata();
         
-        console.log(`✅ Instagram-style video cached: ${videoId}`);
       }
     } catch (error) {
-      console.error(`Download error for ${videoId}:`, error);
     }
   }
 
@@ -211,7 +207,6 @@ class InstagramOptimizedVideoCache {
           this.metadata.delete(id);
           newSize -= metadata.size;
         } catch (error) {
-          console.error(`Cleanup error for ${id}:`, error);
         }
       }
       
@@ -227,7 +222,6 @@ class InstagramOptimizedVideoCache {
         this.metadata = new Map(parsed);
       }
     } catch (error) {
-      console.error('Failed to load Instagram cache metadata:', error);
       this.metadata = new Map();
     }
   }
@@ -237,7 +231,6 @@ class InstagramOptimizedVideoCache {
       const serialized = JSON.stringify(Array.from(this.metadata.entries()));
       this.cacheStorage.set('instagramVideoMetadata', serialized);
     } catch (error) {
-      console.error('Failed to save Instagram cache metadata:', error);
     }
   }
 
@@ -265,7 +258,6 @@ class InstagramOptimizedVideoCache {
       this.activeDownloads.clear();
       this.downloadQueue = [];
     } catch (error) {
-      console.error('Instagram cache clear error:', error);
     }
   }
 }

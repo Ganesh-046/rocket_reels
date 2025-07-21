@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { colors } from '../components/AppColors/AppColors';
-import { getAsyncData } from '../Utils/GetAsyncData';
+import { getAsyncData } from '../utils/GetAsyncData';
 
 export const ThemeContext = React.createContext<any>(null);
 
@@ -15,7 +15,6 @@ const ThemesContext = ({ children }: { children: React.ReactNode }) => {
                     setIsMode(mode)
                 }
             } catch (error) {
-                console.error('Error getting theme mode:', error);
             }
         }
 

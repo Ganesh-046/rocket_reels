@@ -103,11 +103,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require('../assets/images/default-avatar.png')}
-              style={styles.profileImage}
-              defaultSource={require('../assets/images/default-avatar.png')}
-            />
+            <Icon name="person" size={48} color="#ffffff" />
           </View>
 
           <Text style={styles.userName}>{userData?.data?.userName || 'User Name'}</Text>

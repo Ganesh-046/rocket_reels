@@ -183,7 +183,6 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
           setVideoCached(item.id, cachedPath);
         }
       } catch (error) {
-        console.error('Error preloading video:', error);
       }
     };
 
@@ -238,7 +237,6 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
   }, [item.id, updateVideoState]);
 
   const onError = useCallback((error: any) => {
-    console.error('Video error:', error);
     updateVideoState(item.id, { error: error.error?.errorString || 'Video playback error' });
   }, [item.id, updateVideoState]);
 
@@ -317,6 +315,146 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
       opacity: pauseButtonOpacity.value,
       transform: [{ scale: scaleValue.value }],
     };
+  });
+
+  // Create styles with viewHeight
+  const styles = StyleSheet.create({
+    container: {
+      width: screenWidth,
+      height: viewHeight,
+      backgroundColor: '#000000',
+    },
+    videoContainer: {
+      width: screenWidth,
+      height: viewHeight,  
+      backgroundColor: '#000000',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    video: {
+      width: screenWidth,
+      height: viewHeight,
+      position: 'absolute',
+    },
+    subtleLoadingOverlay: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: [{ translateX: -20 }, { translateY: -20 }],
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      borderRadius: 20,
+      padding: 8,
+    },
+    cacheIndicator: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderRadius: 12,
+      padding: 4,
+    },
+    bottomOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingBottom: 40,
+      paddingHorizontal: 16,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    },
+    controls: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      padding: 20,
+    },
+    playButton: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: [{ translateX: -35 }, { translateY: -35 }],
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    playButtonTouchable: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    contentInfo: {
+      marginBottom: 10,
+      paddingRight: 80,
+      paddingTop: 10
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#ffffff',
+      marginBottom: 8,
+      textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    description: {
+      fontSize: 14,
+      color: '#ffffff',
+      opacity: 0.9,
+      marginBottom: 8,
+      textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    author: {
+      fontSize: 12,
+      color: '#ffffff',
+      opacity: 0.8,
+      textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    actionButtons: {
+      position: 'absolute',
+      bottom: 16,
+      right: 16,
+      alignItems: 'center',
+      marginBottom: 20
+    },
+    actionButton: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    actionButtonTouchable: {
+      alignItems: 'center',
+    },
+    iconContainer: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      borderWidth: 1,
+      borderColor: '#ffffff',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    actionText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: '#ffffff',
+      textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
   });
 
   return (
@@ -442,20 +580,20 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 
                       {onWatchNow && (
                         <TouchableOpacity 
-                          style={{marginBottom: 20, }} 
+                          style={styles.actionButton} 
                           onPress={() => onWatchNow(item)}
                           activeOpacity={0.8}
                         >
-              <View style={[styles.iconContainer, { borderWidth: 0, marginLeft: 10}]}>
+                          <View style={[styles.iconContainer, { borderWidth: 0 }]}>
                             <WatchNowButton 
                               onPress={() => onWatchNow(item)}
                               size="small"
                             />
-              </View>
-              <Text style={styles.actionText}>
+                          </View>
+                          <Text style={styles.actionText}>
                             Watch Now
-              </Text>
-            </TouchableOpacity>
+                          </Text>
+                        </TouchableOpacity>
                       )}
           </View>
 
@@ -471,145 +609,5 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: screenWidth,
-    height: screenHeight,
-    backgroundColor: '#000000',
-  },
-  videoContainer: {
-    width: screenWidth,
-    height: screenHeight,  
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  video: {
-    width: screenWidth,
-    height: screenHeight,
-    position: 'absolute',
-  },
-
-  subtleLoadingOverlay: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -20 }, { translateY: -20 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  cacheIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 12,
-    padding: 4,
-  },
-  bottomOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 40, // Increased padding to ensure progress bar is visible
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  controls: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 20,
-  },
-  playButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -35 }, { translateY: -35 }],
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  playButtonTouchable: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  contentInfo: {
-    marginBottom: 10,
-    paddingRight: 80, // Space for action buttons
-    paddingTop: 10
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  description: {
-    fontSize: 14,
-    color: '#ffffff',
-    opacity: 0.9,
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  author: {
-    fontSize: 12,
-    color: '#ffffff',
-    opacity: 0.8,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  actionButtons: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    alignItems: 'center',
-    marginBottom: 20
-  },
-  actionButton: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  actionButtonTouchable: {
-    alignItems: 'center',
-  },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-});
 
 export default EnhancedVideoPlayer; 

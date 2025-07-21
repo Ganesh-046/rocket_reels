@@ -24,6 +24,9 @@ import SubscriptionScreen from '../screens/SubscriptionScreen';
 import VideoPlayer from '../screens/VideoPlayer';
 import WebViewScreen from '../screens/WebViewScreen';
 
+// Feature Screens
+import EpisodePlayerScreen from '../features/reels/screens/EpisodePlayerScreen';
+
 // Existing Screens
 import ProfileScreen from '../screens/ProfileScreen';
 import ShortsScreen from '../features/discover/screens/ShortsScreen';
@@ -36,6 +39,9 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 // Store
 import { useAuthState, useIsAuthenticated } from '../store/auth.store';
 import MMKVStorage from '../lib/mmkv';
+
+// Navigation Service
+import { setNavigationRef } from './NavigationService';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -149,6 +155,7 @@ const MainStack = () => {
       <Stack.Screen name="VideoPlayer" component={VideoPlayer} />
       <Stack.Screen name="WebView" component={WebViewScreen} />
       <Stack.Screen name="UltraShorts" component={UltraShortsScreen} />
+      <Stack.Screen name="EpisodePlayer" component={EpisodePlayerScreen as any} />
     </Stack.Navigator>
   );
 };
@@ -193,8 +200,18 @@ const AppNavigator = () => {
       }, 1000);
 
     } catch (error) {
-      console.error('App initialization error:', error);
       setIsLoading(false);
+    }
+  };
+
+  // Determine initial route
+  const getInitialRouteName = () => {
+    if (isFirstLaunch) {
+      return 'Onboarding';
+    } else if (isAuthenticated) {
+      return 'MainStack';
+    } else {
+      return 'AuthStack';
     }
   };
 
@@ -209,40 +226,37 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={(ref) => {
+        setNavigationRef(ref);
+      }}
+      initialRouteName={getInitialRouteName()}
+    >
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
         }}
       >
-        {/* Navigation Conditions as per Screen Flow Guide */}
+        {/* Always include OnboardingScreen for navigation */}
+        <Stack.Screen 
+          name="Onboarding" 
+          component={OnboardingScreen}
+          options={{ gestureEnabled: false }}
+        />
         
-        {/* Condition 1: First Launch → OnboardingScreen */}
-        {isFirstLaunch && (
-          <Stack.Screen 
-            name="Onboarding" 
-            component={OnboardingScreen}
-            options={{ gestureEnabled: false }}
-          />
-        )}
-
-        {/* Condition 2: Not Authenticated → AuthStack */}
-        {!isFirstLaunch && !isAuthenticated && (
-          <Stack.Screen 
-            name="AuthStack" 
-            component={AuthStack}
-            options={{ gestureEnabled: false }}
-          />
-        )}
-
-        {/* Condition 3: Authenticated → MainStack */}
-        {!isFirstLaunch && isAuthenticated && (
-          <Stack.Screen 
-            name="MainStack" 
-            component={MainStack}
-            options={{ gestureEnabled: false }}
-          />
-        )}
+        {/* Always include AuthStack for navigation */}
+        <Stack.Screen 
+          name="AuthStack" 
+          component={AuthStack}
+          options={{ gestureEnabled: false }}
+        />
+        
+        {/* Always include MainStack for navigation */}
+        <Stack.Screen 
+          name="MainStack" 
+          component={MainStack}
+          options={{ gestureEnabled: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

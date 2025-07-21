@@ -10,6 +10,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -20,21 +21,29 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
+// Auth Store
+import { useAuthStore, useAuthUser } from '../../../store/auth.store';
+
+// MMKV Storage
+import MMKVStorage from '../../../lib/mmkv';
+
 const { width, height } = Dimensions.get('window');
 const isLargeDevice = width > 768;
 
 interface NavigationProps {
   navigation: {
     navigate: (screen: string) => void;
+    replace: (screen: string) => void;
   };
 }
 
-// Mock data for static UI
+// Menu data structure
 interface MenuItem {
   id: number;
   name: string;
   desc: string;
   iconName: string;
+  action?: () => void;
 }
 
 interface MenuSection {
@@ -43,141 +52,15 @@ interface MenuSection {
   data: MenuItem[];
 }
 
-const mockUserProfileInfo = {
-  userName: 'Suyash Potdar',
-  userEmail: 'suyashpotdar03@gmail.com',
-  profileImage: null,
-  referralCode: 'SUYASH50'
-};
-
-const menuData: MenuSection[] = [
-  {
-    id: 53532,
-    title: 'REFFERAL',
-    data: [
-      {
-        id: 35325,
-        name: 'Invitation',
-        desc: 'Invite your friends',
-        iconName: 'invite'
-      }
-    ]
-  },
-  {
-    id: 53532,
-    title: 'CATEGORY',
-    data: [
-      {
-        id: 35325,
-        name: 'Rocket Reels',
-        desc: 'Our original Rocket Reels',
-        iconName: 'bookmark'
-      },
-      {
-        id: 85745,
-        name: 'Explore',
-        desc: 'Choose from your favourite genres',
-        iconName: 'play'
-      },
-      {
-        id: 85745,
-        name: 'Tailored Content for Every Age',
-        desc: 'Discover content that fits your age and mood.',
-        iconName: 'bookmark'
-      },
-    ]
-  },
-  {
-    id: 53532,
-    title: 'MY UPDATES',
-    data: [
-      {
-        id: 85685,
-        name: 'My List',
-        desc: 'See added MyList here',
-        iconName: 'bookmark'
-      },
-      {
-        id: 85685,
-        name: 'My History',
-        desc: 'Know your viewing activity',
-        iconName: 'history'
-      },
-      {
-        id: 85685,
-        name: 'Transaction History',
-        desc: 'Know your payment transactions',
-        iconName: 'transaction'
-      },
-    ]
-  },
-  {
-    id: 854643,
-    title: 'SETTINGS',
-    data: [
-      {
-        id: 745634,
-        name: 'Delete Account',
-        desc: 'Delete your account here',
-        iconName: 'account_delete'
-      },
-      {
-        id: 855754,
-        name: 'Watch Family Safe Content',
-        desc: 'Want to enable family safe content',
-        iconName: '18+'
-      },
-    ]
-  },
-  {
-    id: 7456345,
-    title: 'POLICY & SUPPORT',
-    data: [
-      {
-        id: 865756,
-        name: 'Privacy Policy',
-        desc: 'Our terms of use & agreements',
-        iconName: 'privacy'
-      },
-      {
-        id: 865756,
-        name: 'Refund Policy',
-        desc: 'Our refund and cancellation policy',
-        iconName: 'refund'
-      },
-      {
-        id: 865756,
-        name: 'Terms & Conditions',
-        desc: 'Our terms and conditions',
-        iconName: 'service'
-      },
-      {
-        id: 865756,
-        name: 'Contact Us',
-        desc: 'Contact us for support and assistance',
-        iconName: 'contact'
-      }
-    ]
-  },
-  {
-    id: 7456345,
-    title: 'OTHERS',
-    data: [
-      {
-        id: 865756,
-        name: 'Log out',
-        desc: 'Sign off from the system',
-        iconName: 'logout'
-      }
-    ]
-  },
-];
-
 const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const [isHide, setIsHide] = useState(false);
   const [familySafeToggle, setFamilySafeToggle] = useState(false);
+  
+  // Get user data from auth store
+  const user = useAuthUser();
+  const { logout } = useAuthStore();
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -186,6 +69,89 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   };
 
   const marginBottom = Platform.OS === 'android' ? tabBarHeight - 50 : tabBarHeight + insets.bottom - 20;
+
+  // Handle logout
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            navigation.replace('Auth');
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle menu item actions
+  const handleMenuItemPress = (item: MenuItem) => {
+    switch (item.name) {
+      case 'Log out':
+        handleLogout();
+        break;
+      case 'Watch Family Safe Content':
+        setFamilySafeToggle(!familySafeToggle);
+        break;
+      case 'Edit Profile':
+        navigation.navigate('EditProfile');
+        break;
+      case 'My List':
+        navigation.navigate('MyList');
+        break;
+      case 'My History':
+        navigation.navigate('History');
+        break;
+      case 'Transaction History':
+        navigation.navigate('Transaction');
+        break;
+      case 'My Wallet':
+        navigation.navigate('MyWallet');
+        break;
+      case 'Refill':
+        navigation.navigate('Refill');
+        break;
+      case 'Subscription':
+        navigation.navigate('Subscription');
+        break;
+      case 'Privacy Policy':
+      case 'Refund Policy':
+      case 'Terms & Conditions':
+      case 'Contact Us':
+        // Navigate to web view for policy pages
+        navigation.navigate('WebView', { 
+          title: item.name,
+          url: `https://rocketreels.com/${item.name.toLowerCase().replace(/\s+/g, '-')}`
+        });
+        break;
+      case 'Delete Account':
+        Alert.alert(
+          'Delete Account',
+          'This action cannot be undone. Are you sure?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                // Handle account deletion
+                logout();
+                navigation.replace('Auth');
+              },
+            },
+          ]
+        );
+        break;
+      default:
+        // Handle other menu items
+        break;
+    }
+  };
 
   const getIconComponent = (iconName: string) => {
     const iconSize = isLargeDevice ? width * 0.02 : width * 0.04;
@@ -223,7 +189,135 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     );
   };
 
-  const firstLetter = mockUserProfileInfo?.userName?.charAt(0)?.toUpperCase() || 'S';
+  // Get user data
+  const userName = user?.userName || 'Guest';
+  const userEmail = user?.userEmail || 'No email';
+  const referralCode = 'N/A'; // UserProfile doesn't have referralCode
+  const firstLetter = userName?.charAt(0)?.toUpperCase() || 'G';
+
+  // Menu data with real user data
+  const menuData: MenuSection[] = [
+    {
+      id: 53532,
+      title: 'REFERRAL',
+      data: [
+        {
+          id: 35325,
+          name: 'Invitation',
+          desc: `Referral Code: ${referralCode}`,
+          iconName: 'invite'
+        }
+      ]
+    },
+    {
+      id: 53532,
+      title: 'CATEGORY',
+      data: [
+        {
+          id: 35325,
+          name: 'Rocket Reels',
+          desc: 'Our original Rocket Reels',
+          iconName: 'bookmark'
+        },
+        {
+          id: 85745,
+          name: 'Explore',
+          desc: 'Choose from your favourite genres',
+          iconName: 'play'
+        },
+        {
+          id: 85745,
+          name: 'Tailored Content for Every Age',
+          desc: 'Discover content that fits your age and mood.',
+          iconName: 'bookmark'
+        },
+      ]
+    },
+    {
+      id: 53532,
+      title: 'MY UPDATES',
+      data: [
+        {
+          id: 85685,
+          name: 'My List',
+          desc: 'See added MyList here',
+          iconName: 'bookmark'
+        },
+        {
+          id: 85685,
+          name: 'My History',
+          desc: 'Know your viewing activity',
+          iconName: 'history'
+        },
+        {
+          id: 85685,
+          name: 'Transaction History',
+          desc: 'Know your payment transactions',
+          iconName: 'transaction'
+        },
+      ]
+    },
+    {
+      id: 854643,
+      title: 'SETTINGS',
+      data: [
+        {
+          id: 745634,
+          name: 'Delete Account',
+          desc: 'Delete your account here',
+          iconName: 'account_delete'
+        },
+        {
+          id: 855754,
+          name: 'Watch Family Safe Content',
+          desc: 'Want to enable family safe content',
+          iconName: '18+'
+        },
+      ]
+    },
+    {
+      id: 7456345,
+      title: 'POLICY & SUPPORT',
+      data: [
+        {
+          id: 865756,
+          name: 'Privacy Policy',
+          desc: 'Our terms of use & agreements',
+          iconName: 'privacy'
+        },
+        {
+          id: 865756,
+          name: 'Refund Policy',
+          desc: 'Our refund and cancellation policy',
+          iconName: 'refund'
+        },
+        {
+          id: 865756,
+          name: 'Terms & Conditions',
+          desc: 'Our terms and conditions',
+          iconName: 'service'
+        },
+        {
+          id: 865756,
+          name: 'Contact Us',
+          desc: 'Contact us for support and assistance',
+          iconName: 'contact'
+        }
+      ]
+    },
+    {
+      id: 7456345,
+      title: 'OTHERS',
+      data: [
+        {
+          id: 865756,
+          name: 'Log out',
+          desc: 'Sign off from the system',
+          iconName: 'logout'
+        }
+      ]
+    },
+  ];
 
   return (
     <LinearGradient
@@ -238,19 +332,12 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           {/* Profile Header */}
           <View style={[styles.profileHeader, { marginTop: insets.top }]}>
             <View style={styles.profileInfo}>
-              {mockUserProfileInfo?.profileImage ? (
-                <Image 
-                  style={styles.profileImage} 
-                  source={{ uri: mockUserProfileInfo.profileImage }} 
-                />
-              ) : (
-                <View style={styles.profileImage}>
-                  <Text style={styles.profileInitial}>{firstLetter}</Text>
-                </View>
-              )}
+              <View style={styles.profileImage}>
+                <Text style={styles.profileInitial}>{firstLetter}</Text>
+              </View>
               <View style={styles.profileDetails}>
-                <Text style={styles.userName}>{mockUserProfileInfo?.userName || 'Guest'}</Text>
-                <Text style={styles.userEmail}>{mockUserProfileInfo?.userEmail || 'UDID : 85367532644'}</Text>
+                <Text style={styles.userName}>{userName}</Text>
+                <Text style={styles.userEmail}>{userEmail}</Text>
               </View>
             </View>
             <TouchableOpacity 
@@ -356,11 +443,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
                   <TouchableOpacity
                     key={itemIndex}
                     style={styles.menuItem}
-                    onPress={() => {
-                      if (item.name === 'Watch Family Safe Content') {
-                        setFamilySafeToggle(!familySafeToggle);
-                      }
-                    }}
+                    onPress={() => handleMenuItemPress(item)}
                   >
                     <View style={styles.menuItemLeft}>
                       {getIconComponent(item.iconName)}

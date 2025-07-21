@@ -71,7 +71,12 @@ const HistoryScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       style={styles.historyCard}
       onPress={() => navigation.navigate('Detail', { movieId: item.id })}
     >
-      <Image source={{ uri: item.image }} style={styles.historyImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=History' 
+        }} 
+        style={styles.historyImage} 
+      />
       <View style={styles.historyInfo}>
         <View style={styles.historyHeader}>
           <Text style={styles.historyTitle}>{item.title}</Text>

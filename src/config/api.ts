@@ -3,7 +3,8 @@ export const API_CONFIG = {
   BASE_URL: __DEV__ 
     ? 'https://k9456pbd.rocketreel.co.in/api/v1'
     : 'https://k9456pbd.rocketreel.co.in/api/v1',
-  TIMEOUT: 10000,
+  TIMEOUT: 30000, // Increased from 10s to 30s
+  AUTH_TIMEOUT: 45000, // Special timeout for auth requests
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
 };

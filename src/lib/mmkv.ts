@@ -37,7 +37,6 @@ class MMKVStorage {
       const user = storage.getString(STORAGE_KEYS.USER);
       return user ? JSON.parse(user) : null;
     } catch (error) {
-      console.error('Error getting user from storage:', error);
       return null;
     }
   }
@@ -46,7 +45,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.USER, JSON.stringify(user));
     } catch (error) {
-      console.error('Error setting user to storage:', error);
     }
   }
 
@@ -73,7 +71,6 @@ class MMKVStorage {
       const watchlist = storage.getString(STORAGE_KEYS.WATCHLIST);
       return watchlist ? JSON.parse(watchlist) : [];
     } catch (error) {
-      console.error('Error getting watchlist from storage:', error);
       return [];
     }
   }
@@ -82,7 +79,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.WATCHLIST, JSON.stringify(watchlist));
     } catch (error) {
-      console.error('Error setting watchlist to storage:', error);
     }
   }
 
@@ -106,7 +102,6 @@ class MMKVStorage {
       const likedContent = storage.getString(STORAGE_KEYS.LIKED_CONTENT);
       return likedContent ? JSON.parse(likedContent) : [];
     } catch (error) {
-      console.error('Error getting liked content from storage:', error);
       return [];
     }
   }
@@ -115,7 +110,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.LIKED_CONTENT, JSON.stringify(likedContent));
     } catch (error) {
-      console.error('Error setting liked content to storage:', error);
     }
   }
 
@@ -136,7 +130,6 @@ class MMKVStorage {
       const history = storage.getString(STORAGE_KEYS.WATCH_HISTORY);
       return history ? JSON.parse(history) : [];
     } catch (error) {
-      console.error('Error getting watch history from storage:', error);
       return [];
     }
   }
@@ -145,7 +138,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.WATCH_HISTORY, JSON.stringify(history));
     } catch (error) {
-      console.error('Error setting watch history to storage:', error);
     }
   }
 
@@ -184,7 +176,6 @@ class MMKVStorage {
         quality: '720p',
       };
     } catch (error) {
-      console.error('Error getting settings from storage:', error);
       return {
         isAdult: false,
         language: 'en',
@@ -199,7 +190,6 @@ class MMKVStorage {
       const newSettings = { ...currentSettings, ...settings };
       storage.set(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Error setting settings to storage:', error);
     }
   }
 
@@ -220,7 +210,6 @@ class MMKVStorage {
 
       return parsed.data;
     } catch (error) {
-      console.error('Error getting cache from storage:', error);
       return null;
     }
   }
@@ -234,7 +223,6 @@ class MMKVStorage {
       };
       storage.set(`${STORAGE_KEYS.CACHE}_${key}`, JSON.stringify(cacheData));
     } catch (error) {
-      console.error('Error setting cache to storage:', error);
     }
   }
 
@@ -254,7 +242,6 @@ class MMKVStorage {
       const data = storage.getString(key);
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error(`Error getting data for key ${key}:`, error);
       return null;
     }
   }
@@ -263,7 +250,6 @@ class MMKVStorage {
     try {
       storage.set(key, JSON.stringify(data));
     } catch (error) {
-      console.error(`Error setting data for key ${key}:`, error);
     }
   }
 
@@ -281,7 +267,6 @@ class MMKVStorage {
       const authData = storage.getString(STORAGE_KEYS.AUTH_DATA);
       return authData ? JSON.parse(authData) : null;
     } catch (error) {
-      console.error('Error getting auth data from storage:', error);
       return null;
     }
   }
@@ -291,7 +276,6 @@ class MMKVStorage {
       const authData = { user, token };
       storage.set(STORAGE_KEYS.AUTH_DATA, JSON.stringify(authData));
     } catch (error) {
-      console.error('Error setting auth data to storage:', error);
     }
   }
 
@@ -305,7 +289,6 @@ class MMKVStorage {
       const balance = storage.getString(STORAGE_KEYS.BALANCE);
       return balance ? JSON.parse(balance) : 0;
     } catch (error) {
-      console.error('Error getting balance from storage:', error);
       return 0;
     }
   }
@@ -314,7 +297,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.BALANCE, JSON.stringify(balance));
     } catch (error) {
-      console.error('Error setting balance to storage:', error);
     }
   }
 
@@ -324,7 +306,6 @@ class MMKVStorage {
       const streak = storage.getString(STORAGE_KEYS.CHECK_IN_STREAK);
       return streak ? JSON.parse(streak) : 0;
     } catch (error) {
-      console.error('Error getting check-in streak from storage:', error);
       return 0;
     }
   }
@@ -333,7 +314,6 @@ class MMKVStorage {
     try {
       storage.set(STORAGE_KEYS.CHECK_IN_STREAK, JSON.stringify(streak));
     } catch (error) {
-      console.error('Error setting check-in streak to storage:', error);
     }
   }
 

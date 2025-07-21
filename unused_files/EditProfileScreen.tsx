@@ -159,10 +159,9 @@ const EditProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Profile Image */}
         <View style={styles.profileImageSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require('../assets/images/default-avatar.png')}
-              style={styles.profileImage}
-            />
+            <View style={styles.profileImagePlaceholder}>
+              <Icon name="person" size={48} color="#ffffff" />
+            </View>
             <TouchableOpacity style={styles.editImageButton}>
               <Icon name="camera-alt" size={20} color="#ffffff" />
             </TouchableOpacity>
@@ -306,6 +305,14 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     position: 'relative',
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileImage: {
     width: 100,

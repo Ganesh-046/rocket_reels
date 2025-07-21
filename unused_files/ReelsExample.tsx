@@ -115,7 +115,6 @@ const ReelsExample: React.FC = () => {
   // Handle navigation (you would implement this based on your navigation setup)
   const handleNavigation = {
     navigate: (screen: string, params?: any) => {
-      console.log(`Navigate to ${screen}`, params);
       // Implement your navigation logic here
     },
   };

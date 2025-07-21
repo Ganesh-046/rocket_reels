@@ -80,22 +80,22 @@ export const useScrollWorklets = (config: Partial<ScrollWorkletConfig> = {}) => 
     
     onBeginDrag: () => {
       'worklet';
-      console.log('🎯 Scroll began');
+
     },
     
     onEndDrag: () => {
       'worklet';
-      console.log('🎯 Scroll ended');
+
     },
     
     onMomentumBegin: () => {
       'worklet';
-      console.log('🎯 Momentum began');
+
     },
     
     onMomentumEnd: () => {
       'worklet';
-      console.log('🎯 Momentum ended');
+
     },
   });
 

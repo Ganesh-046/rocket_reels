@@ -140,7 +140,8 @@ export interface CustomizedContentResponse {
 
 export interface BannerItem {
   _id: string;
-  imageUri: string;
+  image?: string;
+  imageUri?: string;
   contentDetails: {
     backdropImage: string;
     thumb: string;
@@ -254,6 +255,7 @@ export interface ApiResponse<T> {
   data: T;
   hasNext?: boolean;
   page?: number;
+  cookies?: Record<string, string>; // 🔑 CRITICAL: Cookies for video authentication
 }
 
 // ============================================================================
@@ -309,6 +311,9 @@ export interface OTPVerificationRequest {
   mobileNo: string;
   callingCode: string;
   otp: string;
+  deviceToken: string;
+  deviceType: string;
+  firebaseToken: string;
 }
 
 export interface SignupRequest {

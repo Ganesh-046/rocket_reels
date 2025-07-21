@@ -1,15 +1,20 @@
-import { createNavigationContainerRef } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import { useAuthState } from '../store/auth.store';
+import { useAuthStore } from '../store/auth.store';
 
-export const navigationRef = createNavigationContainerRef();
+// Navigation reference (you'll need to set this up in your App.tsx)
+let navigationRef: any = null;
+
+export const setNavigationRef = (ref: any) => {
+  navigationRef = ref;
+};
 
 // Navigation Service for handling authentication-based navigation
 export class NavigationService {
   // Navigate to a screen with authentication check
   static navigate(name: string, params?: any) {
-    if (navigationRef.isReady()) {
-      (navigationRef as any).navigate(name, params);
+    if (navigationRef?.isReady()) {
+      navigationRef.navigate(name, params);
     }
   }
 
@@ -173,14 +178,14 @@ export class NavigationService {
 
   // Navigate back
   static goBack() {
-    if (navigationRef.isReady() && navigationRef.canGoBack()) {
+    if (navigationRef?.isReady() && navigationRef.canGoBack()) {
       navigationRef.goBack();
     }
   }
 
   // Reset navigation to specific screen
   static reset(name: string, params?: any) {
-    if (navigationRef.isReady()) {
+    if (navigationRef?.isReady()) {
       navigationRef.reset({
         index: 0,
         routes: [{ name, params }],
@@ -188,11 +193,16 @@ export class NavigationService {
     }
   }
 
-  // Check if user is authenticated
+  // Check if user is authenticated - FIXED: Now properly checks auth state
   static isAuthenticated(): boolean {
-    // This should be implemented based on your auth store
-    // For now, we'll use a simple check
-    return false; // Replace with actual auth check
+    try {
+      // Get auth state from store
+      const authState = useAuthStore.getState();
+      return !!authState.user?._id && authState.isAuthenticated;
+    } catch (error) {
+      console.error('NavigationService - Error checking authentication:', error);
+      return false;
+    }
   }
 
   // Navigate to main stack after successful authentication

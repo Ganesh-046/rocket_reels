@@ -38,7 +38,6 @@ class FrameDropDetector {
       this.checkFrameDrops();
     }, 100);
 
-    console.log('🔍 Frame drop monitoring started');
   }
 
   stopMonitoring() {
@@ -50,7 +49,6 @@ class FrameDropDetector {
       this.monitoringInterval = null;
     }
 
-    console.log('🔍 Frame drop monitoring stopped');
   }
 
   private checkFrameDrops() {
@@ -95,7 +93,6 @@ class FrameDropDetector {
   private triggerPreemptiveFlush() {
     if (!this.config.enablePreemptiveFlush) return;
     
-    console.log('🚨 Triggering preemptive memory flush due to frame drops');
     
     // Trigger garbage collection and memory cleanup
     InteractionManager.runAfterInteractions(() => {
@@ -110,14 +107,12 @@ class FrameDropDetector {
   }
 
   private triggerLowResolutionMode() {
-    console.log('📉 Switching to low resolution mode due to frame drops');
     
     // Emit event for components to switch to low resolution
     performanceMonitor.emit('lowResolutionMode', true);
   }
 
   private triggerCacheClear() {
-    console.log('🧹 Triggering cache clear due to excessive frame drops');
     
     // Clear all caches
     this.clearAllCaches();
@@ -129,12 +124,10 @@ class FrameDropDetector {
   private clearNonEssentialCaches() {
     // Clear thumbnail caches, non-essential data
     // This would integrate with your existing cache system
-    console.log('🧹 Clearing non-essential caches');
   }
 
   private clearAllCaches() {
     // Clear all video caches and force reload
-    console.log('🧹 Clearing all caches');
     
     // This would integrate with your enhancedVideoCache
     // enhancedVideoCache.clearCache();

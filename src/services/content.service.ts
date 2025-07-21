@@ -2,40 +2,89 @@ import apiInterceptor from '../lib/api-interceptor';
 import { ENDPOINTS, CACHE_TTL } from '../config/api';
 import {
   ApiResponse,
-  PaginatedResponse,
   ContentItem,
-  ContentDetail,
+  ContentDetailResponse,
+  ContentListResponse,
   Episode,
-  Season,
-  Banner,
   Genre,
-  SubGenre,
   Language,
-  VideoAccess,
-  WatchHistory,
-  ContentListParams,
-  PaginationParams,
+  ContentListRequest,
+  TrailerListResponse,
+  LatestContentResponse,
+  TopContentResponse,
+  UpcomingContentResponse,
+  CustomizedContentResponse,
+  BannerItem,
 } from '../types/api';
+
+// Additional type definitions for missing types
+interface ContentDetail extends ContentDetailResponse {}
+interface Season {
+  _id: string;
+  seasonNumber: number;
+  episodes: Episode[];
+}
+interface VideoAccess {
+  episodeId: string;
+  accessGranted: boolean;
+  unlockMethod?: string;
+}
+interface WatchHistory {
+  contentId: string;
+  episodeId?: string;
+  duration: number;
+  lastWatchedAt: string;
+}
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+interface PaginatedResponse<T> {
+  data: T[];
+  hasNext: boolean;
+  page: number;
+}
+interface Banner {
+  _id: string;
+  image: string;
+  title: string;
+  description: string;
+}
+interface SubGenre {
+  _id: string;
+  name: string;
+  genreId: string;
+}
 
 // Content Service
 class ContentService {
   // Get Content List
-  async getContentList(params: ContentListParams = {}): Promise<ApiResponse<PaginatedResponse<ContentItem>>> {
+  async getContentList(params: ContentListRequest = {}): Promise<ApiResponse<ContentListResponse>> {
     const queryString = new URLSearchParams(params as Record<string, string>).toString();
     const endpoint = queryString ? `${ENDPOINTS.CONTENT.LIST}?${queryString}` : ENDPOINTS.CONTENT.LIST;
     
-    return apiInterceptor.get<PaginatedResponse<ContentItem>>(endpoint, {
+    return apiInterceptor.get<ContentListResponse>(endpoint, {
       cacheKey: `content_list_${JSON.stringify(params)}`,
       cacheTTL: CACHE_TTL.VIDEO_CONTENT,
     });
   }
 
-  // Get Trailer List
-  async getTrailerList(params: PaginationParams = {}): Promise<ApiResponse<PaginatedResponse<ContentItem>>> {
-    const queryString = new URLSearchParams(params as Record<string, string>).toString();
-    const endpoint = queryString ? `${ENDPOINTS.CONTENT.TRAILER_LIST}?${queryString}` : ENDPOINTS.CONTENT.TRAILER_LIST;
+  // Get Trailer List - Fixed to match original API format
+  async getTrailerList(params: { adult?: boolean; page?: number } = {}): Promise<ApiResponse<TrailerListResponse>> {
+    // Build query string with correct parameters
+    const queryParams = new URLSearchParams();
     
-    return apiInterceptor.get<PaginatedResponse<ContentItem>>(endpoint, {
+    // Always include adult parameter (default to true if not provided)
+    queryParams.append('adult', (params.adult ?? true).toString());
+    
+    // Add page parameter if provided
+    if (params.page) {
+      queryParams.append('page', params.page.toString());
+    }
+    
+    const endpoint = `${ENDPOINTS.CONTENT.TRAILER_LIST}?${queryParams.toString()}`;
+    
+    return apiInterceptor.get<TrailerListResponse>(endpoint, {
       cacheKey: `trailer_list_${JSON.stringify(params)}`,
       cacheTTL: CACHE_TTL.VIDEO_CONTENT,
     });
@@ -178,6 +227,75 @@ class ContentService {
       cacheKey: 'languages',
       cacheTTL: CACHE_TTL.STATIC_CONTENT,
     });
+  }
+
+  // Get Content Details with Episodes (for EpisodePlayerScreen)
+  async getContentDetailsWithEpisodes(contentId: string, userId?: string, token?: string): Promise<ApiResponse<ContentDetailResponse>> {
+    const params = userId && token ? `?userid=${userId}&token=${token}` : '';
+    const endpoint = `${ENDPOINTS.CONTENT.DETAILS}/${contentId}${params}`;
+    
+    console.log('🌐 ContentService - getContentDetailsWithEpisodes:', {
+      contentId,
+      userId: userId ? 'Present' : 'Not provided',
+      token: token ? 'Present' : 'Not provided',
+      endpoint
+    });
+    
+    try {
+      const result = await apiInterceptor.get<ContentDetailResponse>(endpoint, {
+        cacheKey: `content_details_episodes_${contentId}`,
+        cacheTTL: CACHE_TTL.VIDEO_CONTENT,
+      });
+      
+      console.log('✅ ContentService - getContentDetailsWithEpisodes success:', {
+        contentId,
+        hasData: !!result.data,
+        episodesCount: result.data?.episodes ? Object.keys(result.data.episodes).length : 0
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('❌ ContentService - getContentDetailsWithEpisodes error:', {
+        contentId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
+  // Get Unlocked Episodes
+  async getUnlockedEpisodes(contentId: string): Promise<ApiResponse<{ episodeId: string; unlockType: string; unlockedAt: string }[]>> {
+    return apiInterceptor.get<{ episodeId: string; unlockType: string; unlockedAt: string }[]>(
+      `${ENDPOINTS.REWARDS.GET_UNLOCKED_EPISODE}/${contentId}`,
+      {
+        cacheKey: `unlocked_episodes_${contentId}`,
+        cacheTTL: CACHE_TTL.VIDEO_CONTENT,
+      }
+    );
+  }
+
+  // Unlock Episode with Coins
+  async unlockEpisodeWithCoins(data: {
+    episodeId: string;
+    userId: string;
+    coins: number;
+  }): Promise<ApiResponse<{ episodeId: string; unlockType: string; unlockedAt: string; remainingCoins: number }>> {
+    return apiInterceptor.post<{ episodeId: string; unlockType: string; unlockedAt: string; remainingCoins: number }>(
+      ENDPOINTS.REWARDS.UNLOCK_COINS,
+      data
+    );
+  }
+
+  // Unlock Episode with Ads
+  async unlockEpisodeWithAds(data: {
+    episodeId: string;
+    userId: string;
+    adType: string;
+  }): Promise<ApiResponse<{ episodeId: string; unlockType: string; unlockedAt: string }>> {
+    return apiInterceptor.post<{ episodeId: string; unlockType: string; unlockedAt: string }>(
+      ENDPOINTS.REWARDS.UNLOCK_ADS,
+      data
+    );
   }
 }
 

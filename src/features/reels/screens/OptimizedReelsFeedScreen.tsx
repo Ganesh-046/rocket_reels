@@ -177,7 +177,6 @@ const OptimizedReelsFeedScreen: React.FC<OptimizedReelsFeedScreenProps> = ({
 
       setReelsData(prev => [...prev, ...newData]);
     } catch (error) {
-      console.error('Error loading more data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +216,6 @@ const OptimizedReelsFeedScreen: React.FC<OptimizedReelsFeedScreenProps> = ({
       setActiveIndex(0);
       currentIndex.current = 0;
     } catch (error) {
-      console.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -289,15 +287,12 @@ const OptimizedReelsFeedScreen: React.FC<OptimizedReelsFeedScreenProps> = ({
         }}
         onLike={(itemId) => {
           // Handle like action
-          console.log('Liked:', itemId);
         }}
         onShare={(shareItem) => {
           // Handle share action
-          console.log('Share:', shareItem);
         }}
         onComment={(itemId) => {
           // Handle comment action
-          console.log('Comment:', itemId);
         }}
       />
     );

@@ -54,7 +54,7 @@ export const useAdvancedPerformance = (videoId: string) => {
     frameCountRef.current = 0;
     lastFrameTimeRef.current = Date.now();
     
-    console.log(`📊 Started advanced performance monitoring for video: ${videoId}`);
+
   }, [videoId]);
 
   // End performance monitoring and calculate metrics
@@ -95,14 +95,7 @@ export const useAdvancedPerformance = (videoId: string) => {
     // Add alerts for performance issues
     addPerformanceAlerts(newMetrics);
     
-    console.log(`📊 Advanced performance metrics for ${videoId}:`, {
-      loadTime: `${loadTime}ms`,
-      cacheHitRate: `${newMetrics.cacheHitRate.toFixed(1)}%`,
-      memoryUsage: `${(newMetrics.memoryUsage / 1024 / 1024).toFixed(2)}MB`,
-      frameRate: `${newMetrics.frameRate} FPS`,
-      scrollVelocity: `${Math.abs(newMetrics.scrollVelocity).toFixed(1)}`,
-      isOptimal: optimal,
-    });
+
   }, [videoId]);
 
   // Check if performance is optimal

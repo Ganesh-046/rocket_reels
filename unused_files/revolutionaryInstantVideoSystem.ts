@@ -86,9 +86,7 @@ class RevolutionaryInstantVideoSystem {
       this.memoryManager.start();
       this.instantPreloader.start();
       
-      console.log('🚀 Revolutionary instant video system initialized');
     } catch (error) {
-      console.error('Revolutionary system init error:', error);
     }
   }
 
@@ -104,7 +102,6 @@ class RevolutionaryInstantVideoSystem {
       if (state && state.isInMemory && state.memoryVideoReady) {
         const memoryExists = await RNFS.exists(state.memoryPath);
         if (memoryExists) {
-          console.log(`⚡ INSTANT memory playback: ${videoId}`);
           return state.memoryPath; // Instant playback from memory
         }
       }
@@ -113,7 +110,6 @@ class RevolutionaryInstantVideoSystem {
       if (state && state.isFullyCached) {
         const fileExists = await RNFS.exists(state.localPath);
         if (fileExists) {
-          console.log(`⚡ Fast cached playback: ${videoId}`);
           return state.localPath;
         } else {
           this.videoStates.delete(videoId);
@@ -121,11 +117,9 @@ class RevolutionaryInstantVideoSystem {
       }
 
       // Start revolutionary download and return URL immediately
-      console.log(`⚡ Starting revolutionary download: ${videoId}`);
       this.startRevolutionaryDownload(videoId, videoUrl);
       return videoUrl;
     } catch (error) {
-      console.error(`Error in getVideo for ${videoId}:`, error);
       return videoUrl;
     }
   }
@@ -151,7 +145,6 @@ class RevolutionaryInstantVideoSystem {
       }
     }
 
-    console.log(`🔮 Revolutionary preloading: ${preloadIndices.join(', ')}`);
 
     // Preload with priority
     for (const index of preloadIndices) {
@@ -217,9 +210,7 @@ class RevolutionaryInstantVideoSystem {
       state.isDownloading = false;
       this.saveVideoStates();
       
-      console.log(`✅ Revolutionary download complete: ${videoId}`);
     } catch (error) {
-      console.error(`Revolutionary download failed for ${videoId}:`, error);
       state.isDownloading = false;
       
       // Retry with exponential backoff
@@ -237,7 +228,6 @@ class RevolutionaryInstantVideoSystem {
     if (!state) return;
 
     try {
-      console.log(`📥 Starting revolutionary download for ${videoId}`);
       
       const downloadResult = await RNFS.downloadFile({
         fromUrl: videoUrl,
@@ -260,12 +250,10 @@ class RevolutionaryInstantVideoSystem {
         const stats = await RNFS.stat(state.localPath);
         state.size = stats.size;
         state.downloadProgress = 100;
-        console.log(`✅ Revolutionary download complete: ${videoId}, size: ${stats.size}`);
       } else {
         throw new Error(`Download failed with status: ${downloadResult.statusCode}`);
       }
     } catch (error) {
-      console.error(`Revolutionary download failed for ${videoId}:`, error);
       throw error;
     }
   }
@@ -360,7 +348,6 @@ class RevolutionaryInstantVideoSystem {
         this.videoStates = new Map(states);
       }
     } catch (error) {
-      console.error('Failed to load video states:', error);
     }
   }
 
@@ -440,13 +427,11 @@ class MemoryManager {
       // Check if already exists
       const exists = await RNFS.exists(memoryPath);
       if (exists) {
-        console.log(`✅ Memory video already exists: ${videoId}`);
         return;
       }
 
       // REVOLUTIONARY: Create low-quality, short-duration memory video
       // This is the key to instant playback - small, fast-loading videos
-      console.log(`🎬 Creating memory video for instant playback: ${videoId}`);
       
       // For now, we'll copy the first 30 seconds as memory video
       // In a real implementation, you'd use FFmpeg to create optimized versions
@@ -462,9 +447,7 @@ class MemoryManager {
       };
       
       this.memoryVideos.set(videoId, memoryVideo);
-      console.log(`✅ Memory video created: ${videoId}, size: ${stats.size}`);
     } catch (error) {
-      console.error(`Failed to create memory video for ${videoId}:`, error);
     }
   }
 
@@ -487,7 +470,6 @@ class MemoryManager {
         try {
           await RNFS.unlink(video.path);
           this.memoryVideos.delete(id);
-          console.log(`🧹 Cleaned up memory video: ${id}`);
         } catch (error) {
           // Ignore cleanup errors
         }

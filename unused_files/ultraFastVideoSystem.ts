@@ -80,15 +80,11 @@ class UltraFastVideoSystem {
       const dirExists = await RNFS.exists(this.cacheDir);
       if (!dirExists) {
         await RNFS.mkdir(this.cacheDir);
-        console.log(`📁 Created cache directory: ${this.cacheDir}`);
       }
       this.loadVideoStates();
       this.startProcessing();
-      console.log('🚀 Ultra-fast video system initialized');
     } catch (error) {
-      console.error('Ultra-fast system init error:', error);
       // Continue without caching - videos will still work with direct URLs
-      console.log('⚠️ Continuing without cache system');
     }
   }
 
@@ -103,7 +99,6 @@ class UltraFastVideoSystem {
       this.userBehavior
     );
 
-    console.log(`🔮 Predicting videos: ${predictedIndices.join(', ')}`);
 
     // Preload predicted videos with critical priority
     for (const index of predictedIndices) {
@@ -145,31 +140,25 @@ class UltraFastVideoSystem {
         try {
           const fileExists = await RNFS.exists(state.localPath);
           if (fileExists) {
-            console.log(`⚡ Instant playback: ${videoId} (fully cached)`);
             return state.localPath;
           } else {
-            console.log(`⚠️ Cached file missing for ${videoId}, removing from cache`);
             this.videoStates.delete(videoId);
           }
         } catch (error) {
-          console.log(`⚠️ Error checking cached file for ${videoId}:`, error);
           this.videoStates.delete(videoId);
         }
       }
 
       // If partially cached, return what we have and continue downloading
       if (state && state.bufferChunks.length > 0) {
-        console.log(`⚡ Fast playback: ${videoId} (partially cached)`);
         this.continueDownload(videoId, videoUrl);
         return state.localPath;
       }
 
       // Start aggressive download and return URL immediately
-      console.log(`⚡ Starting download: ${videoId}`);
       this.startAggressiveDownload(videoId, videoUrl);
       return videoUrl;
     } catch (error) {
-      console.error(`Error in getVideo for ${videoId}:`, error);
       // Always return the original URL as fallback
       return videoUrl;
     }
@@ -249,9 +238,7 @@ class UltraFastVideoSystem {
       state.isDownloading = false;
       this.saveVideoStates();
       
-      console.log(`✅ Bulletproof download complete: ${videoId}`);
     } catch (error) {
-      console.error(`Download failed for ${videoId}:`, error);
       state.isDownloading = false;
       
       // Retry with exponential backoff
@@ -269,7 +256,6 @@ class UltraFastVideoSystem {
     if (!state) return;
 
     try {
-      console.log(`📥 Starting bulletproof download for ${videoId}`);
       
       const downloadResult = await RNFS.downloadFile({
         fromUrl: videoUrl,
@@ -292,12 +278,10 @@ class UltraFastVideoSystem {
         const stats = await RNFS.stat(state.localPath);
         state.size = stats.size;
         state.downloadProgress = 100;
-        console.log(`✅ Bulletproof download complete: ${videoId}, size: ${stats.size}`);
       } else {
         throw new Error(`Download failed with status: ${downloadResult.statusCode}`);
       }
     } catch (error) {
-      console.error(`Bulletproof download failed for ${videoId}:`, error);
       throw error; // Re-throw to trigger retry logic
     }
   }
@@ -368,7 +352,6 @@ class UltraFastVideoSystem {
         this.videoStates = new Map(states);
       }
     } catch (error) {
-      console.error('Failed to load video states:', error);
     }
   }
 
@@ -462,7 +445,6 @@ class UltraFastVideoSystem {
 
     for (const id of toRemove) {
       this.videoStates.delete(id);
-      console.log(`🧹 Removed invalid cache entry: ${id}`);
     }
 
     this.saveVideoStates();

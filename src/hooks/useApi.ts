@@ -188,9 +188,14 @@ export const useContentList = (
   params: ContentListRequest,
   options?: UseQueryOptions<ApiResponse<ContentListResponse>>
 ) => {
+  
+  
   return useQuery({
     queryKey: queryKeys.content.list(params),
-    queryFn: () => apiService.getContentList(params),
+    queryFn: () => {
+
+      return apiService.getContentList(params);
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
     ...options,
   });
@@ -210,7 +215,7 @@ export const useContentDetails = (
 };
 
 export const useTrailerList = (
-  params: { page?: number; limit?: number },
+  params: { adult?: boolean; page?: number } = { adult: true, page: 1 },
   options?: UseQueryOptions<ApiResponse<TrailerListResponse>>
 ) => {
   return useQuery({
@@ -272,9 +277,14 @@ export const useCustomizedContent = (
 export const useBannerData = (
   options?: UseQueryOptions<ApiResponse<BannerItem[]>>
 ) => {
+  
+  
   return useQuery({
     queryKey: queryKeys.content.banners,
-    queryFn: () => apiService.getBannerData(),
+    queryFn: () => {
+
+      return apiService.getBannerData();
+    },
     staleTime: 15 * 60 * 1000, // 15 minutes
     ...options,
   });

@@ -57,7 +57,12 @@ const GenreScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, ro
       style={styles.movieCard}
       onPress={() => navigation.navigate('Detail', { movieId: item.id })}
     >
-      <Image source={{ uri: item.image }} style={styles.movieImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Genre' 
+        }} 
+        style={styles.movieImage} 
+      />
       <View style={styles.movieInfo}>
         <Text style={styles.movieTitle} numberOfLines={2}>{item.title}</Text>
         <View style={styles.movieMeta}>

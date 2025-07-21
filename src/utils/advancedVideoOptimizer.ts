@@ -93,7 +93,6 @@ class AdvancedVideoOptimizer {
 
       return videoUrl; // Return URL while loading progressively
     } catch (error) {
-      console.error('Progressive loading failed:', error);
       return this.fallbackToDirectLoad(videoId, videoUrl);
     }
   }
@@ -104,7 +103,6 @@ class AdvancedVideoOptimizer {
       const contentLength = response.headers.get('content-length');
       return contentLength ? parseInt(contentLength) : null;
     } catch (error) {
-      console.warn('Could not get video size:', error);
       return null;
     }
   }
@@ -142,10 +140,8 @@ class AdvancedVideoOptimizer {
         chunk.isLoaded = true;
         this.memoryUsage += arrayBuffer.byteLength;
         
-        console.log(`✅ Loaded chunk: ${chunk.id} (${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB)`);
       }
     } catch (error) {
-      console.error(`Failed to load chunk ${chunk.id}:`, error);
     }
   }
 
@@ -167,7 +163,6 @@ class AdvancedVideoOptimizer {
   }
 
   private async fallbackToDirectLoad(videoId: string, videoUrl: string): Promise<string> {
-    console.log(`🔄 Falling back to direct load for ${videoId}`);
     return instagramVideoCache.getVideoStream(videoId, videoUrl);
   }
 
@@ -179,7 +174,6 @@ class AdvancedVideoOptimizer {
   }
 
   private async cleanupMemory(): Promise<void> {
-    console.log('🧹 Advanced memory cleanup triggered');
     
     // Cleanup old textures
     const textures = Array.from(this.texturePool.entries());

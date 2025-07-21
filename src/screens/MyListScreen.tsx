@@ -127,7 +127,12 @@ const MyListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </TouchableOpacity>
       )}
       
-      <Image source={{ uri: item.image }} style={styles.watchlistImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Watchlist' 
+        }} 
+        style={styles.watchlistImage} 
+      />
       <View style={styles.watchlistInfo}>
         <Text style={styles.watchlistTitle}>{item.title}</Text>
         <View style={styles.watchlistMeta}>

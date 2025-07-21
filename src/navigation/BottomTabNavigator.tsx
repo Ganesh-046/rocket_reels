@@ -2,7 +2,6 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigationTypes';
-import HomeScreen from '../features/reels/screens/ReelsFeedScreen';
 import DiscoverScreen from '../features/discover/screens/DiscoverScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import ReelDetailScreen from '../features/reels/screens/ReelDetailsModal';
@@ -10,6 +9,17 @@ import CustomTabBar from './CustomTabBar';
 import Shorts from '../features/reels/screens/ReelPlayerScreen';
 import RewardsScreen from '../features/profile/screens/RewardsScreen';
 import EpisodePlayerScreen from '../features/reels/screens/EpisodePlayerScreen';
+import HomeScreen from '../screens/HomeScreen';
+import WebViewScreen from '../screens/WebViewScreen';
+
+// Profile Screens
+import EditProfileScreen from '../features/profile/screens/EditProfileScreen';
+import HistoryScreen from '../features/profile/screens/HistoryScreen';
+import MyListScreen from '../features/profile/screens/MyListScreen';
+import TransactionScreen from '../features/profile/screens/TransactionScreen';
+import MyWalletScreen from '../features/profile/screens/MyWalletScreen';
+import RefillScreen from '../features/profile/screens/RefillScreen';
+import SubscriptionScreen from '../features/profile/screens/SubscriptionScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +45,16 @@ export default function BottomTabNavigator() {
       <Stack.Screen name="ReelDetail" component={ReelDetailScreen} />
       <Stack.Screen name="Shorts" component={Shorts} />
       <Stack.Screen name="EpisodePlayer" component={EpisodePlayerScreen} />
+      
+      {/* Profile Screens */}
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="MyList" component={MyListScreen} />
+      <Stack.Screen name="Transaction" component={TransactionScreen} />
+      <Stack.Screen name="MyWallet" component={MyWalletScreen} />
+      <Stack.Screen name="Refill" component={RefillScreen} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="WebView" component={WebViewScreen} />
     </Stack.Navigator>
   );
 }

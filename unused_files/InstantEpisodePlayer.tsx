@@ -7,6 +7,7 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -24,20 +25,26 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 interface Episode {
   _id: string;
   episodeNo: number;
-  title: string;
-  description: string;
-  videoUrl: string;
-  thumbnail: string;
-  duration: number;
-  views: string;
-  likes: number;
-  comments: number;
-  shares: number;
+  language: string;
   status: 'locked' | 'unlocked';
   contentId: string;
-  contentName: string;
-  isShort?: boolean;
-  aspectRatio?: number;
+  video_urls: {
+    '1080p': string;
+    '720p': string;
+    '480p': string;
+    '360p': string;
+    master: string;
+  };
+  thumbnail: string;
+  like: number;
+  isDeleted: boolean;
+  isLiked: boolean | null;
+  // Additional properties for unlock functionality
+  isLocked?: boolean;
+  unlockType?: 'coins' | 'ads';
+  unlockPrice?: number;
+  title?: string;
+  description?: string;
 }
 
 interface InstantEpisodePlayerProps {
@@ -56,6 +63,10 @@ interface InstantEpisodePlayerProps {
   isLiked: boolean;
   isAppActive: boolean;
   allEpisodes?: Episode[]; // Add all episodes for predictive loading
+  isEpisodeUnlocked?: (episodeId: string) => boolean;
+  onUnlockWithCoins?: (episodeId: string, coins: number) => Promise<any>;
+  onUnlockWithAds?: (episodeId: string, adType: string) => Promise<any>;
+  videoAuthCookies?: Record<string, string>; // 🔑 CRITICAL: Cookies for video authentication
 }
 
 const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
@@ -74,6 +85,9 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
   isLiked,
   isAppActive,
   allEpisodes = [],
+  isEpisodeUnlocked,
+  onUnlockWithCoins,
+  onUnlockWithAds,
 }) => {
   // Video state
   const videoState = useVideoState(episode._id);
@@ -90,6 +104,7 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
   // Local state
   const [cachedVideoUrl, setCachedVideoUrl] = useState<string | null>(null);
   const [isRevolutionaryReady, setIsRevolutionaryReady] = useState(false);
+  const [videoAuthCookies, setVideoAuthCookies] = useState<any>(null);
 
   // Animated values
   const controllerOpacity = useSharedValue(1); // Start visible
@@ -101,7 +116,6 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
 
   // Enhanced pause button animations
   const showPauseButtonWithTimer = useCallback(() => {
-    console.log('🎯 Showing pause button');
     pauseButtonOpacity.value = withSpring(1, { damping: 15, stiffness: 150 });
     
     if (hideTimeoutRef.current) {
@@ -109,7 +123,6 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
     }
     
     hideTimeoutRef.current = setTimeout(() => {
-      console.log('🎯 Hiding pause button after timeout');
       pauseButtonOpacity.value = withSpring(0, { damping: 15, stiffness: 150 });
     }, 2000);
   }, [pauseButtonOpacity]);
@@ -129,10 +142,33 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
     onLike(episode._id);
   }, [likeButtonScale, onLike, episode._id]);
 
+  // Get video authentication cookies
+  useEffect(() => {
+    const getVideoAuth = async () => {
+      try {
+        const response = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/content/video-access/${episode._id}`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          setVideoAuthCookies(data.data);
+          console.log('🔐 InstantEpisodePlayer - Video Auth Cookies:', {
+            episodeId: episode._id,
+            hasCookies: !!data.data
+          });
+        }
+      } catch (error) {
+        console.error('❌ InstantEpisodePlayer - Failed to get video auth:', error);
+      }
+    };
+
+    if (isVisible && !videoAuthCookies) {
+      getVideoAuth();
+    }
+  }, [isVisible, episode._id, videoAuthCookies]);
+
   // REVOLUTIONARY: Instant preloading when visible
   useEffect(() => {
-    if (isVisible && !isPreloadedRef.current) {
-      console.log(`🚀 Revolutionary preloading episode ${index}: ${episode._id}`);
+    if (isVisible && !isPreloadedRef.current && videoAuthCookies) {
       
       const preloadVideo = async () => {
         try {
@@ -141,17 +177,15 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
             setTimeout(() => reject(new Error('Revolutionary timeout')), 1000) // Ultra-fast timeout
           );
           
-          const revolutionaryPromise = revolutionaryInstantVideoSystem.getVideo(episode._id, episode.videoUrl);
+          const revolutionaryPromise = revolutionaryInstantVideoSystem.getVideo(episode._id, episode.video_urls.master);
           
           const revolutionaryUrl = await Promise.race([revolutionaryPromise, timeoutPromise]);
           setCachedVideoUrl(revolutionaryUrl);
           isPreloadedRef.current = true;
           setIsRevolutionaryReady(true);
-          console.log(`⚡ Revolutionary ready: ${episode._id}`);
         } catch (error) {
-          console.log(`🔄 Using direct URL for ${episode._id} (revolutionary fallback)`);
           // REVOLUTIONARY: Always use direct URL as fallback - no errors
-          setCachedVideoUrl(episode.videoUrl);
+          setCachedVideoUrl(episode.video_urls.master);
           isPreloadedRef.current = true;
           setIsRevolutionaryReady(true);
         }
@@ -159,7 +193,7 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
 
       preloadVideo();
     }
-  }, [isVisible, episode._id, episode.videoUrl, index]);
+  }, [isVisible, episode._id, episode.video_urls.master, index, videoAuthCookies]);
 
   // REVOLUTIONARY: Predictive loading for next episodes - never fails
   useEffect(() => {
@@ -167,14 +201,13 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
       // Trigger predictive loading for next episodes with revolutionary error handling
       const triggerPredictiveLoading = async () => {
         try {
-          const episodeData = allEpisodes.map(ep => ({ id: ep._id, url: ep.videoUrl }));
+          const episodeData = allEpisodes.map(ep => ({ id: ep._id, url: ep.video_urls.master }));
           await revolutionaryInstantVideoSystem.predictAndPreload(episodeData, index);
           
           // Update user behavior for better predictions
           // Note: Revolutionary system doesn't need user behavior tracking
         } catch (error) {
           // REVOLUTIONARY: Silent fail - don't affect user experience
-          console.log(`Silent revolutionary loading skip for episode ${index}`);
         }
       };
 
@@ -185,15 +218,6 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
   // REVOLUTIONARY: Instant play/pause logic - never fails
   useEffect(() => {
     const shouldPlay = isVisible && isActive && !isScrolling && isRevolutionaryReady;
-    
-    console.log(`⚡ Episode ${index} revolutionary play state:`, {
-      shouldPlay,
-      isVisible,
-      isActive,
-      isScrolling,
-      isRevolutionaryReady,
-      episodeId: episode._id
-    });
 
     // Update play state immediately
     setVideoPlaying(episode._id, shouldPlay);
@@ -212,30 +236,87 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
     }
   }, [isVisible, isActive, isScrolling, isRevolutionaryReady, episode._id, setVideoPlaying, controllerOpacity, hidePauseButton, index]);
 
-  // REVOLUTIONARY: Video source configuration for instant playback
+  // 🔑 FIXED: Video source configuration with correct CloudFront CDN and authentication
   const videoSource = useMemo(() => {
-    const videoUrl = cachedVideoUrl || episode.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4';
+    // 🔑 CRITICAL: Use CloudFront CDN URL from old code
+    const NEXT_PUBLIC_ASSET_URL = 'https://d1cuox40kar1pw.cloudfront.net';
+    
+    // 🔑 CRITICAL: Construct video URL like old working code
+    const relativeUrl = episode.video_urls?.master || '';
+    
+    // 🔑 CRITICAL: Try different URL construction methods
+    let fullVideoUrl = '';
+    if (relativeUrl.startsWith('http')) {
+      fullVideoUrl = relativeUrl;
+    } else {
+      // 🔑 CRITICAL: Use CloudFront for all videos (like your curl test)
+      fullVideoUrl = `${NEXT_PUBLIC_ASSET_URL}/${relativeUrl}`;
+    }
+    
+    // 🔑 CRITICAL: Test with dummy video first to ensure player works
+    const testWithDummyVideo = false; // Set to true to test with dummy video
+    const videoUrl = testWithDummyVideo 
+      ? 'https://www.w3schools.com/html/mov_bbb.mp4' 
+      : (cachedVideoUrl || fullVideoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4');
+    
+    console.log('🎬 InstantEpisodePlayer - Video Source (FIXED):', {
+      episodeId: episode._id,
+      episodeNo: episode.episodeNo,
+      relativeUrl,
+      fullVideoUrl,
+      videoUrl,
+      cachedVideoUrl: !!cachedVideoUrl,
+      hasVideoUrls: !!episode.video_urls,
+      masterUrl: episode.video_urls?.master,
+      usingCloudFront: fullVideoUrl.includes('cloudfront.net'),
+      usingApiServer: fullVideoUrl.includes('rocketreel.co.in'),
+      testWithDummyVideo,
+      finalVideoUrl: videoUrl,
+      hasCookies: !!videoAuthCookies,
+      cookieCount: videoAuthCookies ? Object.keys(videoAuthCookies).length : 0
+    });
+    
+    // 🔑 CRITICAL: Build authentication headers like old working code
+    const authHeaders: any = {
+      'User-Agent': 'RocketReel/1.0',
+      'Accept': 'application/vnd.apple.mpegurl',
+    };
+
+    // 🔑 CRITICAL: Add CloudFront authentication cookies if available
+    if (videoAuthCookies) {
+      const cookieString = Object.entries(videoAuthCookies)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('; ');
+      authHeaders['Cookie'] = cookieString;
+      console.log('🔑 InstantEpisodePlayer - Added cookies:', cookieString);
+    }
+
+    // 🔑 CRITICAL: Simplify video source for testing
+    if (testWithDummyVideo) {
+      return {
+        uri: videoUrl,
+        // Simple source for dummy video test
+      };
+    }
     
     return {
       uri: videoUrl,
-      headers: {
-        'User-Agent': 'RevolutionaryVideo/1.0',
-        'Accept': 'video/mp4,video/*,*/*;q=0.9',
-        'Cache-Control': 'max-age=86400',
-      },
-      // REVOLUTIONARY: Ultra-aggressive buffering for instant playback
+      headers: authHeaders,
+      // 🔑 CRITICAL: Conservative buffering for reliability (like old code)
       bufferConfig: {
-        minBufferMs: 50, // Ultra-low for instant start
-        maxBufferMs: 1000, // Small max buffer for speed
-        bufferForPlaybackMs: 25, // Minimal buffer for playback
-        bufferForPlaybackAfterRebufferMs: 50, // Quick recovery
+        minBufferMs: 1000, // Conservative for reliability
+        maxBufferMs: 5000, // Moderate max buffer
+        bufferForPlaybackMs: 500, // Conservative buffer for playback
+        bufferForPlaybackAfterRebufferMs: 1000, // Conservative recovery
+        backBufferDurationMs: 3000,
+        maxHeapAllocationPercent: 0.3,
       },
-      // Additional optimizations
-      minLoadRetryCount: 1, // Fast retry
+      // 🔑 CRITICAL: Conservative settings for reliability
+      minLoadRetryCount: 3, // Conservative retry
       shouldCache: true,
-      automaticallyWaitsToMinimizeStalling: false, // Disable for instant playback
+      automaticallyWaitsToMinimizeStalling: true, // Enable for reliability
     };
-  }, [cachedVideoUrl, episode.videoUrl]);
+  }, [cachedVideoUrl, episode.video_urls.master, videoAuthCookies]);
 
   // REVOLUTIONARY: Video event handlers - never fail
   const handleProgress = useCallback(({ currentTime, playableDuration }: any) => {
@@ -244,40 +325,47 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
       updateVideoStateAction(episode._id, { duration: playableDuration });
     } catch (error) {
       // Silent fail - don't affect user experience
-      console.log(`Silent progress update skip for ${episode._id}`);
     }
   }, [episode._id, setVideoProgress, updateVideoStateAction]);
 
   const handleLoad = useCallback(({ duration: videoDuration }: any) => {
+    console.log('✅ InstantEpisodePlayer - Video Loaded Successfully:', {
+      episodeId: episode._id,
+      episodeNo: episode.episodeNo,
+      duration: videoDuration,
+      videoUrl: videoSource?.uri
+    });
+    
     try {
-      console.log(`⚡ Revolutionary video loaded for episode ${index}: ${episode._id}`);
       updateVideoStateAction(episode._id, { 
         duration: videoDuration, 
         isReady: true,
         isBuffering: false 
       });
     } catch (error) {
-      // Silent fail - don't affect user experience
-      console.log(`Silent load handler skip for ${episode._id}`);
+      console.error('❌ InstantEpisodePlayer - Error updating video state:', error);
     }
-  }, [episode._id, updateVideoStateAction, index]);
+  }, [episode._id, updateVideoStateAction, index, videoSource]);
 
   const handleReadyForDisplay = useCallback(() => {
+    console.log('🎬 InstantEpisodePlayer - Video Ready for Display:', {
+      episodeId: episode._id,
+      episodeNo: episode.episodeNo,
+      videoUrl: videoSource?.uri
+    });
+    
     try {
-      console.log(`⚡ Revolutionary video ready for display: ${episode._id}`);
       updateVideoStateAction(episode._id, { isReady: true, isBuffering: false });
     } catch (error) {
-      // Silent fail - don't affect user experience
-      console.log(`Silent ready handler skip for ${episode._id}`);
+      console.error('❌ InstantEpisodePlayer - Error updating ready state:', error);
     }
-  }, [episode._id, updateVideoStateAction]);
+  }, [episode._id, updateVideoStateAction, videoSource]);
 
   const handleBuffer = useCallback(({ isBuffering: buffering }: any) => {
     try {
       updateVideoStateAction(episode._id, { isBuffering: buffering });
     } catch (error) {
       // Silent fail - don't affect user experience
-      console.log(`Silent buffer handler skip for ${episode._id}`);
     }
   }, [episode._id, updateVideoStateAction]);
 
@@ -285,16 +373,32 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
     try {
       // For repeat mode, just reset progress and keep playing
       updateVideoStateAction(episode._id, { progress: 0 });
-      console.log(`🔄 Episode ${index} ended, repeating: ${episode._id}`);
     } catch (error) {
       // Silent fail - don't affect user experience
-      console.log(`Silent end handler skip for ${episode._id}`);
     }
   }, [episode._id, updateVideoStateAction, index]);
 
   const handleError = useCallback((error: any) => {
+    console.error('❌ InstantEpisodePlayer - Video Error:', {
+      episodeId: episode._id,
+      episodeNo: episode.episodeNo,
+      error: error?.errorString || error?.message || 'Unknown error',
+      videoUrl: episode.video_urls?.master,
+      errorCode: error?.errorCode,
+      errorType: error?.errorType,
+      fullError: error
+    });
+    
+    // 🔑 CRITICAL: Log video source for debugging
+    console.log('🔍 InstantEpisodePlayer - Video Source on Error:', {
+      episodeId: episode._id,
+      videoSource: videoSource,
+      videoUrl: videoSource?.uri,
+      headers: videoSource?.headers,
+      hasCookies: !!videoAuthCookies
+    });
+    
     // REVOLUTIONARY: Never show errors to user - just keep trying
-    console.log(`Silent video error for ${episode._id}:`, error);
     try {
       updateVideoStateAction(episode._id, { 
         isBuffering: false,
@@ -302,9 +406,8 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
       });
     } catch (updateError) {
       // Silent fail - don't affect user experience
-      console.log(`Silent error handler skip for ${episode._id}`);
     }
-  }, [episode._id, updateVideoStateAction]);
+  }, [episode._id, updateVideoStateAction, videoSource, videoAuthCookies]);
 
   // Enhanced play/pause toggle
   const togglePlayPause = useCallback(() => {
@@ -317,7 +420,6 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
 
   // Enhanced video press handler - show pause button on tap
   const handleVideoPress = useCallback(() => {
-    console.log('🎯 Video tapped, showing pause button');
     showPauseButtonWithTimer();
   }, [showPauseButtonWithTimer]);
 
@@ -352,10 +454,29 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
           onBuffer={handleBuffer}
           onEnd={handleEnd}
           onError={handleError}
+          // 🔑 CRITICAL: Add missing props for proper video playback
+          controls={false}
+          progressUpdateInterval={1000}
+          reportBandwidth={true}
+          preventsDisplaySleepDuringVideoPlayback={true}
+          automaticallyWaitsToMinimizeStalling={true}
           // Show thumbnail while video not ready
-          poster={!videoState?.isReady ? episode.thumbnail : undefined}
+          poster={episode.thumbnail}
           posterResizeMode="cover"
+          // 🔑 CRITICAL: Add key prop for proper re-rendering
+          key={`video-${episode._id}-${index}`}
         />
+
+        {/* Fallback Thumbnail - Show when video not ready */}
+        {!videoState?.isReady && (
+          <View style={styles.thumbnailOverlay}>
+            <Image 
+              source={{ uri: episode.thumbnail }} 
+              style={styles.thumbnailImage}
+              resizeMode="cover"
+            />
+          </View>
+        )}
 
         {/* Top Navigation Overlay */}
         <View style={styles.topOverlay}>
@@ -430,6 +551,46 @@ const InstantEpisodePlayer: React.FC<InstantEpisodePlayerProps> = React.memo(({
           <View style={styles.subtleLoadingOverlay}>
             <View style={styles.loadingSpinner}>
               <ActivityIndicator size="small" color="#ffffff" />
+            </View>
+          </View>
+        )}
+
+        {/* Episode Unlock Overlay */}
+        {episode.isLocked && !isEpisodeUnlocked?.(episode._id) && (
+          <View style={styles.unlockOverlay}>
+            <View style={styles.unlockContent}>
+              <Icon name="lock" size={48} color="#ffffff" style={styles.lockIcon} />
+              <Text style={styles.unlockTitle}>Episode Locked</Text>
+              <Text style={styles.unlockDescription}>
+                {episode.unlockType === 'coins' 
+                  ? `Unlock for ${episode.unlockPrice} coins`
+                  : 'Watch an ad to unlock this episode'
+                }
+              </Text>
+              
+              <View style={styles.unlockButtons}>
+                {episode.unlockType === 'coins' && onUnlockWithCoins && (
+                  <TouchableOpacity 
+                    style={styles.unlockButton}
+                    onPress={() => onUnlockWithCoins(episode._id, episode.unlockPrice || 0)}
+                  >
+                    <Text style={styles.unlockButtonText}>
+                      Unlock ({episode.unlockPrice} coins)
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                
+                {episode.unlockType === 'ads' && onUnlockWithAds && (
+                  <TouchableOpacity 
+                    style={styles.unlockButton}
+                    onPress={() => onUnlockWithAds(episode._id, 'rewarded')}
+                  >
+                    <Text style={styles.unlockButtonText}>
+                      Watch Ad to Unlock
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         )}
@@ -670,6 +831,73 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 1,
+  },
+  
+  // Episode Unlock Overlay Styles
+  unlockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  unlockContent: {
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    maxWidth: 300,
+  },
+  lockIcon: {
+    marginBottom: 16,
+  },
+  unlockTitle: {
+    fontSize: 20,
+    color: '#ffffff',
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  unlockDescription: {
+    fontSize: 14,
+    color: '#cccccc',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  unlockButtons: {
+    width: '100%',
+  },
+  unlockButton: {
+    backgroundColor: '#ed9b72',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  unlockButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Thumbnail Overlay Styles
+  thumbnailOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

@@ -23,6 +23,7 @@ export const SvgIcons: React.FC<SvgIconsProps> = ({ name, size, color }) => {
     fullscreen: 'fullscreen',
     close: 'close',
     heart: 'favorite',
+    'heart-filled': 'favorite',
     heartOutline: 'favorite-border',
     share: 'share',
     comment: 'comment',

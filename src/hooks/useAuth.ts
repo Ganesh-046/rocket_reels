@@ -117,7 +117,7 @@ export const useOTPVerification = () => {
         // If it's a new user, we'll need to get user info
         if (response.data.isNew) {
           // You might want to navigate to profile setup
-          console.log('New user, redirect to profile setup');
+    
         } else {
           // Get user info and store it
           queryClient.invalidateQueries({

@@ -228,7 +228,6 @@ const loadPersistedState = () => {
       useVideoStore.setState({ videos });
     }
   } catch (error) {
-    console.error('Failed to load persisted video state:', error);
   }
 };
 

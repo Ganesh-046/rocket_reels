@@ -62,9 +62,7 @@ class ProgressiveImageLoader {
     
     try {
       await Promise.allSettled(preloadPromises);
-      console.log(`🚀 Preloaded ${imageSources.length} progressive images`);
     } catch (error) {
-      console.error('Progressive image preload error:', error);
     }
   }
 
@@ -86,9 +84,7 @@ class ProgressiveImageLoader {
       await this.preloadImageUrl(imageSource.highRes);
       
       this.imageCache.set(cacheKey, true);
-      console.log(`✅ Progressive image loaded: ${cacheKey}`);
     } catch (error) {
-      console.warn(`⚠️ Failed to preload progressive image: ${cacheKey}`, error);
     } finally {
       this.loadingQueue.delete(cacheKey);
     }
@@ -127,7 +123,6 @@ class ProgressiveImageLoader {
   clearCache(): void {
     this.imageCache.clear();
     this.loadingQueue.clear();
-    console.log('🧹 Progressive image cache cleared');
   }
 
   // Get cache statistics

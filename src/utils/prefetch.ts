@@ -141,9 +141,7 @@ class PrefetchManager {
 
       performanceMonitor.endVideoLoad(item.id, true);
       
-      console.log(`🚀 Prefetched: ${item.id} (${item.priority} priority)`);
     } catch (error) {
-      console.warn(`⚠️ Prefetch failed for ${item.id}:`, error);
       performanceMonitor.trackPlaybackError(item.id);
     }
   }
@@ -160,10 +158,8 @@ class PrefetchManager {
       });
       
       if (response.ok) {
-        console.log(`🖼️ Thumbnail prefetched: ${videoId}`);
       }
     } catch (error) {
-      console.warn(`⚠️ Thumbnail prefetch failed for ${videoId}:`, error);
     }
   }
 

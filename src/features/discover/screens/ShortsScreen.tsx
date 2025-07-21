@@ -41,7 +41,6 @@ class VideoCache {
         await RNFS.mkdir(this.cacheDir);
       }
     } catch (error) {
-      console.error('Failed to initialize video cache:', error);
     }
   }
 
@@ -58,7 +57,6 @@ class VideoCache {
       }
       return null;
     } catch (error) {
-      console.error('Error checking cached video:', error);
       return null;
     }
   }
@@ -81,7 +79,6 @@ class VideoCache {
         discretionary: true,
         progress: (res) => {
           const progressPercent = (res.bytesWritten / res.contentLength) * 100;
-          console.log(`Downloading ${videoId}: ${progressPercent.toFixed(2)}%`);
         }
       }).promise;
 
@@ -90,7 +87,6 @@ class VideoCache {
         return videoPath;
       }
     } catch (error) {
-      console.error('Video caching error:', error);
     }
     return videoUrl; // Fallback to original URL
   }
@@ -102,7 +98,6 @@ class VideoCache {
       await Promise.all(deletePromises);
       this.cache.clear();
     } catch (error) {
-      console.error('Error clearing cache:', error);
     }
   }
 
@@ -116,7 +111,6 @@ class VideoCache {
       }
       return totalSize;
     } catch (error) {
-      console.error('Error getting cache size:', error);
       return 0;
     }
   }
@@ -254,15 +248,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
     // Ensure minimum height for proper display
     const finalHeight = Math.max(totalHeight, 400);
     
-    console.log('📏 Video height calculation:', {
-      screenHeight,
-      statusBarHeight,
-      navBarHeight,
-      tabBarHeight,
-      totalHeight,
-      finalHeight
-    });
-    
     return finalHeight;
   }, [insets.top, tabBarHeight]);
 
@@ -273,7 +258,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
       videoCacheRef.current.set(videoId, cachedPath);
       return cachedPath;
     } catch (error) {
-      console.error('Video caching error:', error);
       return videoUrl; // Fallback to original URL
     }
   }, []);
@@ -353,7 +337,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
         url: item.videoUrl,
       });
     } catch (error) {
-      console.error('Share error:', error);
     }
   };
 
@@ -375,7 +358,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
       setShortsData([...SHORTS_DATA]);
       setState(prev => ({ ...prev, currentIndex: 0, playPause: true }));
     } catch (error) {
-      console.error('Refresh error:', error);
     } finally {
       setRefreshing(false);
     }
@@ -383,7 +365,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
 
   const onScrollToIndexFailed = (info: any) => {
     // Don't auto-scroll on failure - let user control scrolling
-    console.log('Scroll to index failed:', info.index);
   };
 
   const ListEmptyComponent = () => (
@@ -396,7 +377,6 @@ const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const renderVideoItem = useCallback(({ item, index }: { item: any; index: number }) => {
     const isVisible = state.currentIndex === index;
     
-    console.log('🎬 Rendering video item:', { index, itemId: item.id, isVisible, videoHeight });
     
     return (
       <View style={[styles.videoContainer, { height: videoHeight }]}>
@@ -477,7 +457,6 @@ const ShortVideoPlayer = ({
         const path = await advancedVideoOptimizer.loadVideoProgressively(item.id, item.videoUrl);
         setCachedPath(path);
       } catch (error) {
-        console.error('Error preloading video:', error);
       }
     };
     preloadVideo();
@@ -525,7 +504,6 @@ const ShortVideoPlayer = ({
         playInBackground={false}
         // Removed poster - video plays directly
         preventsDisplaySleepDuringVideoPlayback
-        onError={(error) => console.log('video error', error)}
         onLoad={load}
         onBuffer={onBuffer}
         onProgress={onProgress}

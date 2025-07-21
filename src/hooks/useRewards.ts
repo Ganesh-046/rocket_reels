@@ -60,7 +60,6 @@ export const useDailyCheckIn = () => {
       }
     },
     onError: (error) => {
-      console.error('Daily check-in error:', error);
     },
   });
 };
@@ -118,7 +117,6 @@ export const useUpdateAdStatus = () => {
       }
     },
     onError: (error) => {
-      console.error('Update ad status error:', error);
     },
   });
 };
@@ -142,7 +140,6 @@ export const useUnlockEpisodeWithCoins = () => {
       }
     },
     onError: (error) => {
-      console.error('Unlock episode with coins error:', error);
     },
   });
 };
@@ -164,7 +161,6 @@ export const useUnlockEpisodeWithAds = () => {
       }
     },
     onError: (error) => {
-      console.error('Unlock episode with ads error:', error);
     },
   });
 };
@@ -211,7 +207,6 @@ export const useCreatePaymentOrder = () => {
   return useMutation({
     mutationFn: (userId: string) => subscriptionService.createPaymentOrder(userId),
     onError: (error) => {
-      console.error('Create payment order error:', error);
     },
   });
 };
@@ -230,7 +225,6 @@ export const usePurchaseSubscription = () => {
       }
     },
     onError: (error) => {
-      console.error('Purchase subscription error:', error);
     },
   });
 };
@@ -250,7 +244,6 @@ export const useCreateRecharge = () => {
     mutationFn: ({ userId, currency }: { userId: string; currency: string }) =>
       rechargeService.createRecharge(userId, currency),
     onError: (error) => {
-      console.error('Create recharge error:', error);
     },
   });
 };
@@ -272,7 +265,6 @@ export const useUpdateRechargeStatus = () => {
       }
     },
     onError: (error) => {
-      console.error('Update recharge status error:', error);
     },
   });
 };

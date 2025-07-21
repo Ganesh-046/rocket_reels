@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../../theme';
 
 interface GenreTabProps {
@@ -37,7 +37,11 @@ const GenreTab: React.FC<GenreTabProps> = ({
   };
 
   return (
-    <View style={[style.tabBarCard, isActive && { borderColor: colors.PRIMARYWHITE }]}>
+    <TouchableOpacity
+      style={[style.tabBarCard, isActive && { borderColor: colors.PRIMARYWHITE }]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
       <Text
         style={[
           style.txt,
@@ -45,9 +49,9 @@ const GenreTab: React.FC<GenreTabProps> = ({
         ]}
         numberOfLines={1}
       >
-        {item.name || item.slug || 'Genre'}
+        {item.name || item.slug || ''}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 

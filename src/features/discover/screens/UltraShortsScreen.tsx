@@ -189,13 +189,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
     // This ensures videos take the complete screen space
     const fullScreenHeight = screenHeight;
     
-    console.log('📏 Video height calculation:', {
-      screenHeight: fullScreenHeight,
-      tabBarHeight,
-      insetsTop: insets.top,
-      insetsBottom: insets.bottom
-    });
-    
     return fullScreenHeight;
   }, []);
 
@@ -289,7 +282,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
         url: 'https://rocketreels.app',
       });
     } catch (error) {
-      console.error('Error sharing:', error);
     }
   };
 
@@ -323,7 +315,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
       setCurrentIndex(0);
       setCurrentVideo(shortsData[0].id);
     } catch (error) {
-      console.error('Refresh error:', error);
     } finally {
       setRefreshing(false);
     }
@@ -331,7 +322,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
 
   const onScrollToIndexFailed = (info: any) => {
     // Don't auto-scroll on failure - let user control scrolling
-    console.log('Scroll to index failed:', info.index);
   };
 
   const ListEmptyComponent = () => (
@@ -344,7 +334,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
   const renderVideoItem = useCallback(({ item, index }: { item: any; index: number }) => {
     const isVisible = currentIndex === index;
     
-    console.log('🎬 Rendering video item:', { index, itemId: item.id, isVisible, videoHeight });
     
     return (
       <View style={[styles.videoContainer, { height: videoHeight }]}>
@@ -376,7 +365,6 @@ const UltraShortsScreen: React.FC<UltraShortsScreenProps> = ({ navigation }) => 
     if (__DEV__) {
       const stats = async () => {
         const cacheStats = await enhancedVideoCache.getCacheStats();
-        console.log('📊 Cache Stats:', cacheStats);
       };
       stats();
     }

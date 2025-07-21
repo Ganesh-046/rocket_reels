@@ -57,7 +57,6 @@ export const useAddToWatchlist = () => {
       }
     },
     onError: (error) => {
-      console.error('Add to watchlist error:', error);
     },
   });
 };
@@ -83,7 +82,6 @@ export const useRemoveFromWatchlist = () => {
       }
     },
     onError: (error) => {
-      console.error('Remove from watchlist error:', error);
     },
   });
 };
@@ -114,7 +112,6 @@ export const useLikeDislikeContent = () => {
       }
     },
     onError: (error) => {
-      console.error('Like/dislike content error:', error);
     },
   });
 };
@@ -144,7 +141,6 @@ export const useLikeTrailer = () => {
       }
     },
     onError: (error) => {
-      console.error('Like trailer error:', error);
     },
   });
 };
@@ -186,7 +182,6 @@ export const useAddWatchHistory = () => {
       }
     },
     onError: (error) => {
-      console.error('Add watch history error:', error);
     },
   });
 };
@@ -195,7 +190,6 @@ export const useUpdateViewCount = () => {
   return useMutation({
     mutationFn: (contentId: string) => userInteractionsService.updateViewCount(contentId),
     onError: (error) => {
-      console.error('Update view count error:', error);
     },
   });
 }; 

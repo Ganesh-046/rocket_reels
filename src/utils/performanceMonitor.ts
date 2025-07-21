@@ -60,7 +60,6 @@ class PerformanceMonitor {
         metric.isCached = isCached;
         metric.fileSize = fileSize;
         
-        console.log(`📊 Video Performance - ${videoId}:`, {
           loadTime: `${loadTime}ms`,
           isCached,
           fileSize: fileSize > 0 ? `${(fileSize / 1024 / 1024).toFixed(2)}MB` : 'Unknown',
@@ -74,7 +73,6 @@ class PerformanceMonitor {
     const metric = this.metrics.get(videoId);
     if (metric) {
       metric.playbackErrors++;
-      console.warn(`⚠️ Playback error for video ${videoId}. Total errors: ${metric.playbackErrors}`);
     }
   }
 
@@ -96,7 +94,6 @@ class PerformanceMonitor {
       this.lastFrameTime = currentTime;
       
       if (fps < 50) {
-        console.warn(`⚠️ Low frame rate detected: ${fps} FPS`);
       }
     }
 
@@ -149,7 +146,6 @@ class PerformanceMonitor {
   async logPerformanceSummary(): Promise<void> {
     const metrics = await this.getPerformanceMetrics();
     
-    console.log('📊 Performance Summary:', {
       'Average Load Time': `${metrics.videoLoadTime.toFixed(2)}ms`,
       'Cache Hit Rate': `${metrics.cacheHitRate.toFixed(1)}%`,
       'Memory Usage': `${metrics.memoryUsage}MB`,
@@ -162,7 +158,6 @@ class PerformanceMonitor {
   clearMetrics(): void {
     this.metrics.clear();
     this.startTimes.clear();
-    console.log('🧹 Performance metrics cleared');
   }
 
   // Stop monitoring
@@ -178,7 +173,6 @@ class PerformanceMonitor {
         try {
           listener(data);
         } catch (error) {
-          console.error(`Error in performance event listener for ${event}:`, error);
         }
       });
     }

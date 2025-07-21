@@ -68,7 +68,12 @@ const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       style={styles.resultCard}
       onPress={() => navigation.navigate('Detail', { movieId: item.id })}
     >
-      <Image source={{ uri: item.image }} style={styles.resultImage} />
+      <Image 
+        source={{ 
+          uri: item.imageUri || item.image || item.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Search+Result' 
+        }} 
+        style={styles.resultImage} 
+      />
       <View style={styles.resultInfo}>
         <Text style={styles.resultTitle}>{item.title}</Text>
         <View style={styles.resultMeta}>

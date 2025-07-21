@@ -43,7 +43,7 @@ export const useVideoTransition = ({
         isVisible: false, 
         lastAccessed: Date.now() 
       });
-      console.log(`⏸️ Pausing video ${videoId} (scrolling)`);
+      
       return;
     }
 
@@ -55,13 +55,13 @@ export const useVideoTransition = ({
           isVisible: true, 
           lastAccessed: Date.now() 
         });
-        console.log(`🎬 Playing video ${videoId} (visible & active)`);
+
       }, 100); // Small delay to prevent rapid play/pause during scroll
     } else if (isVisible && !isActive && !isScrolling) {
       // Video is visible but not active - pause with minimal delay
       transitionTimeoutRef.current = setTimeout(() => {
         setVideoPlaying(videoId, false);
-        console.log(`⏸️ Pausing video ${videoId} (visible but not active)`);
+
       }, 50); // Very short delay to prevent flickering
       
       updateVideoState(videoId, { 
@@ -72,7 +72,7 @@ export const useVideoTransition = ({
       // Video is not visible - pause immediately
       setVideoPlaying(videoId, false);
       updateVideoState(videoId, { isVisible: false });
-      console.log(`⏸️ Pausing video ${videoId} (not visible)`);
+      
     }
 
     // Update last known state
