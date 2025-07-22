@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile } from '../types/api';
 import MMKVStorage from '../lib/mmkv';
+import { log } from '../utils/logger';
 
 // Auth State Interface
 interface AuthState {
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
 
       // Actions
       setUser: (user) => {
+        log.storeAction('AuthStore', 'setUser', { userId: user?._id });
         set({ user });
         if (user) {
           MMKVStorage.setUser(user);
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setToken: (token) => {
+        log.storeAction('AuthStore', 'setToken', { hasToken: !!token });
         set({ token });
         if (token) {
           MMKVStorage.setToken(token);
@@ -67,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: (user, token) => {
+        log.storeAction('AuthStore', 'login', { userId: user._id });
         set({
           user,
           token,
@@ -79,6 +83,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        const currentUser = get().user;
+        log.storeAction('AuthStore', 'logout', { userId: currentUser?._id });
         set({
           user: null,
           token: null,

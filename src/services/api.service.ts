@@ -4,6 +4,7 @@
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { API_CONFIG, ENDPOINTS } from '../config/api';
+import { log } from '../utils/logger';
 import {
   // Authentication Types
   LoginSignupResponse,
@@ -86,21 +87,40 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
+        log.apiRequest(config.method?.toUpperCase() || 'GET', config.url || '', config.data);
+        
         if (this.token) {
           config.headers.accesstoken = this.token;
+          log.debug('API', 'Added auth token to request');
         }
         return config;
       },
       (error) => {
+        log.apiError('REQUEST', 'Request interceptor error', error);
         return Promise.reject(error);
       }
     );
 
     // Response interceptor for error handling
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        log.apiResponse(
+          response.config.method?.toUpperCase() || 'GET',
+          response.config.url || '',
+          response.status,
+          response.data
+        );
+        return response;
+      },
       (error) => {
+        log.apiError(
+          error.config?.method?.toUpperCase() || 'UNKNOWN',
+          error.config?.url || 'unknown',
+          error
+        );
+        
         if (error?.response?.status === 401) {
+          log.securityEvent('Token expired, clearing token');
           // Handle token expiration
           this.clearToken();
           // You can add navigation logic here if needed
@@ -127,7 +147,9 @@ class ApiService {
   // ============================================================================
 
   async login(data: LoginRequest): Promise<ApiResponse<LoginSignupResponse>> {
+    log.info('AUTH', 'Login attempt', { data });
     const response = await this.api.post(ENDPOINTS.AUTH.LOGIN, data);
+    log.success('AUTH', 'Login successful', { userId: response.data.data?.userId });
     return response.data;
   }
 

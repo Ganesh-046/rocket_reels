@@ -52,6 +52,120 @@ import {
   RechargeRequest,
 } from '../types/api';
 
+import { useState, useCallback, useRef } from 'react';
+import { log } from '../utils/logger';
+
+export interface ApiState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface UseApiReturn<T> extends ApiState<T> {
+  execute: (...args: any[]) => Promise<T | null>;
+  reset: () => void;
+  setData: (data: T) => void;
+  setError: (error: string) => void;
+}
+
+export function useApi<T = any>(
+  apiFunction: (...args: any[]) => Promise<T>,
+  initialData: T | null = null
+): UseApiReturn<T> {
+  const [state, setState] = useState<ApiState<T>>({
+    data: initialData,
+    loading: false,
+    error: null,
+  });
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const execute = useCallback(
+    async (...args: any[]): Promise<T | null> => {
+      log.hookCall('useApi.execute', { args });
+      log.time('useApi', 'API Request');
+      
+      // Cancel previous request if it exists
+      if (abortControllerRef.current) {
+        log.info('useApi', 'Cancelling previous request');
+        abortControllerRef.current.abort();
+      }
+
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
+
+      setState(prev => ({
+        ...prev,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        const result = await apiFunction(...args);
+        log.timeEnd('useApi', 'API Request');
+        log.success('useApi', 'API request successful', { result });
+        
+        setState(prev => ({
+          ...prev,
+          data: result,
+          loading: false,
+          error: null,
+        }));
+        return result;
+      } catch (error: any) {
+        log.timeEnd('useApi', 'API Request');
+        
+        // Don't update state if request was cancelled
+        if (error.name === 'AbortError') {
+          log.info('useApi', 'Request was cancelled');
+          return null;
+        }
+
+        const errorMessage = error?.message || 'An error occurred';
+        log.error('useApi', 'API request failed', { error: errorMessage, args });
+        
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: errorMessage,
+        }));
+        return null;
+      }
+    },
+    [apiFunction]
+  );
+
+  const reset = useCallback(() => {
+    setState({
+      data: initialData,
+      loading: false,
+      error: null,
+    });
+  }, [initialData]);
+
+  const setData = useCallback((data: T) => {
+    setState(prev => ({
+      ...prev,
+      data,
+    }));
+  }, []);
+
+  const setError = useCallback((error: string) => {
+    setState(prev => ({
+      ...prev,
+      error,
+    }));
+  }, []);
+
+  return {
+    ...state,
+    execute,
+    reset,
+    setData,
+    setError,
+  };
+}
+
 // ============================================================================
 // QUERY KEYS
 // ============================================================================

@@ -1,42 +1,29 @@
-// Export all hooks
+// Form and Validation Hooks
+export { useForm } from './useForm';
+export type { ValidationRule, ValidationRules, FormErrors, UseFormReturn } from './useForm';
+
+// API Hooks
+export { useApi } from './useApi';
+export type { ApiState, UseApiReturn } from './useApi';
+
+// Storage Hooks
+export { useLocalStorage, storageUtils } from './useLocalStorage';
+
+// Performance Hooks
+export { useDebounce, useDebounceCallback } from './useDebounce';
+
+// Existing hooks - export all from each file
 export * from './useAuth';
+export * from './useContent';
+export * from './useEpisodes';
+export * from './useHomeScreenOptimization';
+export * from './useInstagramPerformance';
+export * from './usePerformanceOptimization';
 export * from './useRewards';
-
-// Export content hooks (excluding useWatchHistory to avoid conflict)
-export {
-  CONTENT_QUERY_KEYS,
-  useContentList,
-  useTrailerList,
-  useContentDetails,
-  useSeasonContent,
-  useVideoAccess,
-  useLatestContent,
-  useTopContent,
-  useUpcomingContent,
-  useCustomizedList,
-  useSpecialInterestContent,
-  useTargetAudienceContent,
-  useBannerData,
-  useGenres,
-  useSubGenres,
-  useLanguages,
-} from './useContent';
-
-// Export user interaction hooks (excluding useWatchHistory to avoid conflict)
-export {
-  USER_INTERACTIONS_QUERY_KEYS,
-  useWatchlist,
-  useWatchlistIds,
-  useAddToWatchlist,
-  useRemoveFromWatchlist,
-  useLikedContent,
-  useLikeDislikeContent,
-  useTrailerLikes,
-  useLikeTrailer,
-  useAddWatchHistory,
-  useUpdateViewCount,
-} from './useUserInteractions';
-
-// Re-export specific hooks to avoid naming conflicts
-export { useWatchHistory as useContentWatchHistory } from './useContent';
-export { useWatchHistory as useUserWatchHistory } from './useUserInteractions'; 
+export * from './useScrollWorklets';
+export * from './useTheme';
+export * from './useThemedStyles';
+export * from './useUserInteractions';
+export * from './useVideoTransition';
+export * from './useAdvancedPerformance';
+export * from './useApiLogger'; 

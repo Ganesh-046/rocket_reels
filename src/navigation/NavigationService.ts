@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { useAuthState } from '../store/auth.store';
 import { useAuthStore } from '../store/auth.store';
+import { log } from '../utils/logger';
 
 // Navigation reference (you'll need to set this up in your App.tsx)
 let navigationRef: any = null;
@@ -13,8 +14,11 @@ export const setNavigationRef = (ref: any) => {
 export class NavigationService {
   // Navigate to a screen with authentication check
   static navigate(name: string, params?: any) {
+    log.navigationNavigate(name, params);
     if (navigationRef?.isReady()) {
       navigationRef.navigate(name, params);
+    } else {
+      log.warn('NAVIGATION', 'Navigation ref not ready', { name, params });
     }
   }
 
@@ -23,8 +27,10 @@ export class NavigationService {
     const isAuthenticated = this.isAuthenticated();
     
     if (isAuthenticated) {
+      log.info('NAVIGATION', 'Accessing protected route', { name, params });
       this.navigate(name, params);
     } else {
+      log.warn('NAVIGATION', 'Unauthorized access attempt', { name, params });
       this.showLoginModal();
     }
   }
@@ -178,8 +184,11 @@ export class NavigationService {
 
   // Navigate back
   static goBack() {
+    log.navigationGoBack();
     if (navigationRef?.isReady() && navigationRef.canGoBack()) {
       navigationRef.goBack();
+    } else {
+      log.warn('NAVIGATION', 'Cannot go back - navigation not ready or no history');
     }
   }
 
