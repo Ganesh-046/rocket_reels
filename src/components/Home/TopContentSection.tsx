@@ -59,7 +59,7 @@ const TopContentSection: React.FC<TopContentSectionProps> = ({
  // Memoized section header for better performance
  const SectionHeader = useMemo(() => (
    <View style={style.sectionHeader}>
-   <View style={{marginBottom: 20}}>
+   <View style={{marginBottom: 20, paddingLeft: 15}}>
          <Text style={style.heading}>{title}</Text>
    </View>
 

@@ -126,13 +126,15 @@ const renderRecentCard = ({ item, index, navigation }: { item: any; index: numbe
 const styles = (theme: any, isLargeDevice: boolean, width: number, height: number, columns: number, appFonts: any) => StyleSheet.create({
  container: {
    flex: 1,
-   paddingBottom: 20
+  //  paddingBottom: 20
  },
  sectionContainer: {
    flex: 1,
    marginBottom: isLargeDevice ? 5 : 10,
  },
  sectionHeader: {
+   flexDirection: 'row',
+   alignItems: 'center',
    justifyContent: 'space-between',
    marginTop: isLargeDevice ? width * .01 : width * 0.04,
    marginHorizontal: width * 0.01,
@@ -1166,7 +1168,7 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
              {/* New Shows */}
              <ContentSection
                title="New Shows"
-               data={latestContentData?.data?.contentList || []}
+               data={(latestContentData?.data?.contentList || []).slice(0, 4)}
                onSeeAll={() => navigateToMovieList('New Shows', latestContentData?.data?.contentList || [])}
                renderItem={props => (renderMovieCard({ ...props, navigation }) as React.ReactElement) || <View key="fallback" />}
                loadingStates={loadingStates}

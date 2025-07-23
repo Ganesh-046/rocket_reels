@@ -97,6 +97,12 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
     } : null
   });
 
+
+
+  console.log('episodesData :', episodesData);
+  console.log('contentInfo :', contentInfo);
+
+
   if (episodesData && episodesData.length > 0) {
     console.log('🎥 EpisodePlayerScreen - Episodes Data Sample:', {
       firstEpisode: {
@@ -314,6 +320,10 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
 
       // Simple render function without complex optimizations
     const renderEpisode = ({ item, index }: { item: Episode; index: number }) => {
+   
+      console.log('episode :', item);
+
+
       const isActive = currentIndex.current === index;
       const isLiked = likedEpisodes.has(item._id);
 
@@ -396,10 +406,13 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
           {/* Bottom Content Section */}
           <View style={styles.bottomContent}>
             <Text style={styles.contentTitle}>
-              Episode {item.episodeNo || index + 1}
+              {contentInfo?.title || 'Unknown Title'}
             </Text>
+            {/* <Text style={styles.episodeSubtitle}>
+              Episode {item.episodeNo || index + 1}
+            </Text> */}
             <Text style={styles.contentDescription} numberOfLines={3}>
-              Watch this amazing episode!
+              {contentInfo?.description || 'No description available'}
             </Text>
           </View>
         </View>
@@ -753,17 +766,25 @@ const styles = StyleSheet.create({
   // Bottom Content Section
   bottomContent: {
     position: 'absolute',
-    bottom: 30,
+    bottom: -10,
     left: 0,
-    right: 80,
+    right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
     padding: 11,
+    paddingBottom: 40,
     borderRadius: 8,
   },
   contentTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+    marginBottom: 4,
+  },
+  episodeSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+    opacity: 0.8,
     marginBottom: 8,
   },
   contentDescription: {

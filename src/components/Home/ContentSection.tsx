@@ -65,7 +65,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
  // Memoized section header for better performance
  const SectionHeader = useMemo(() => (
-   <View style={style.sectionHeader}>
+   <View style={[style.sectionHeader, {marginBottom: 15, paddingHorizontal: 10, paddingLeft: 15}]}>
      <Text style={style.heading}>{title}</Text>
      {onSeeAll && (
        <Text
@@ -167,7 +167,8 @@ const ContentSection: React.FC<ContentSectionProps> = ({
 
 const styles = StyleSheet.create({
  contentContainer: {
-   paddingBottom: 20,
+   paddingBottom: 10,
+   paddingRight: 10,
  },
  skeletonContainer: {
    paddingVertical: 10,

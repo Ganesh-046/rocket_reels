@@ -74,7 +74,7 @@ class ApiInterceptor {
   }
 
   private logResponse(response: any, requestId: string, duration: number): void {
-    console.log(`✅ [${requestId}] RESPONSE:`, {
+    console.log(`✅zzzzz [${requestId}] RESPONSE:`, {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,

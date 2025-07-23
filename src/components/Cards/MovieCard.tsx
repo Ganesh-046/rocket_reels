@@ -103,9 +103,10 @@ export default MovieCard;
 
 const styles = (theme: any, isLargeDevice: boolean, width: number, height: number, columns: number, appFonts: any) => StyleSheet.create({
  card: {
-   width: isLargeDevice ? width * .3135 : width * .48,
+   width: isLargeDevice ? width * .3135 : width * .45,
    justifyContent: 'center',
    margin: width * .01,
+   marginBottom: -20,
    borderRadius: width * .01,
    marginHorizontal: width * .01,
    backgroundColor: theme.colors.PRIMARYWHITEONE
