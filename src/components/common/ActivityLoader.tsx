@@ -1,30 +1,38 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import useTheme from '../../hooks/useTheme';
+import {
+  View,
+  ActivityIndicator,
+  StyleSheet,
+  ViewStyle,
+} from 'react-native';
 
 interface ActivityLoaderProps {
-  size?: 'small' | 'large';
-  color?: string;
+  container?: ViewStyle;
+  loaderColor?: string;
 }
 
-const ActivityLoader: React.FC<ActivityLoaderProps> = ({ 
-  size = 'small', 
-  color 
+const ActivityLoader: React.FC<ActivityLoaderProps> = ({
+  container,
+  loaderColor = '#7d2537',
 }) => {
-  const { theme } = useTheme();
-  const defaultColor = color || theme.colors.primary;
-  
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color={defaultColor} />
+    <View style={[styles.container, container]}>
+      <ActivityIndicator size="large" color={loaderColor} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 999,
   },
 });
 

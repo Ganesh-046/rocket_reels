@@ -8,6 +8,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
+import AdTestScreen from '../screens/AdTestScreen';
 
 // Main Navigation
 import BottomTabNavigator from './BottomTabNavigator';
@@ -61,6 +62,8 @@ const RootNavigator: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
+    console.log('[ROOT DEBUG] RootNavigator component mounted');
+    console.log('[ROOT DEBUG] isAuthenticated:', isAuthenticated);
     initializeApp();
   }, []);
 
@@ -135,6 +138,18 @@ const RootNavigator: React.FC = () => {
           name="Main" 
           component={BottomTabNavigator}
           options={{ gestureEnabled: false }}
+        />
+        
+        {/* Ad Test Screen */}
+        <Stack.Screen 
+          name="AdTest" 
+          component={AdTestScreen}
+          options={{ 
+            headerShown: true,
+            title: 'Ad System Test',
+            headerStyle: { backgroundColor: '#1a1a1a' },
+            headerTintColor: '#ffffff'
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

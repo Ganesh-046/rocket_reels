@@ -20,6 +20,8 @@ function App(): React.JSX.Element {
   useEffect(() => {
     log.info('APP', 'Rocket Reels App started');
     log.info('APP', 'App version', { version: '1.0.0' });
+    console.log('[APP DEBUG] App component mounted');
+    console.log('[APP DEBUG] Testing ad system initialization...');
   }, []);
   
   return (

@@ -32,6 +32,23 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
+// Theme Colors
+export const themeColors = {
+  PRIMARYWHITE: '#FFFFFF',
+  PRIMARYBLACK: '#000000',
+  PRIMARYBG: '#7D2537',
+  PRIMARYGRAY: '#808080',
+  PRIMARYLIGHTBLACK: '#333333',
+  PRIMARYLIGHTBLACKONE: '#666666',
+  PRIMARYWHITEFOUR: 'rgba(255, 255, 255, 0.1)',
+  TRANSPARENT: 'transparent'
+} as const;
+
+// Font Constants
+export const APP_FONT_BOLD = 'Montserrat-Bold';
+export const APP_FONT_MEDIUM = 'Montserrat-Medium';
+export const APP_FONT_REGULAR = 'Montserrat-Regular';
+
 // Storage Keys
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',

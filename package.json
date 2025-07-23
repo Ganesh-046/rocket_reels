@@ -30,9 +30,10 @@
     "react-native-fast-image": "^8.6.3",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.27.1",
+    "react-native-google-mobile-ads": "^14.7.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-linear-gradient": "^2.8.3",
-    "react-native-mmkv": "^3.3.0",
+    "react-native-mmkv": "^2.12.1",
     "react-native-modal-datetime-picker": "^18.0.0",
     "react-native-nitro-modules": "^0.26.3",
     "react-native-reanimated": "^3.18.0",
@@ -71,5 +72,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3648621548657237~9195996023",
+    "ios_app_id": "ca-app-pub-3648621548657237~9195996023"
   }
 }

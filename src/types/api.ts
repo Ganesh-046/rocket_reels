@@ -198,6 +198,14 @@ export interface RechargeHistoryItem {
   createdAt: string;
 }
 
+export interface BenefitItem {
+  _id: string;
+  title: string;
+  description: string;
+  coins: number;
+  btntitle: string;
+}
+
 export interface RewardCoinHistoryItem {
   _id: string;
   benefitTitle: string; // e.g., "Daily Check-in", "Watch Video"

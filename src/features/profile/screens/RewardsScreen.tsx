@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,26 @@ import {
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useRewardedAd } from 'react-native-google-mobile-ads';
+import moment from 'moment';
+
+// WORKING AD UNITS FROM OLD PROJECT
+import { AD_UNITS } from '../../../utils/adConfig';
+import { 
+  useCheckInList, 
+  useBenefits, 
+  useBalance, 
+  useRewardHistory 
+} from '../../../hooks/useRewards';
+import { useAuthUser } from '../../../store/auth.store';
+import MMKVStorage from '../../../lib/mmkv';
 
 const { width, height } = Dimensions.get('window');
 const isLargeDevice = width > 768;
@@ -144,13 +160,175 @@ const mockUserProfileInfo = {
 const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const isFocused = useIsFocused();
   const [refreshloading, setRefreshloading] = useState(false);
   const [isHide, setIsHide] = useState(false);
   const [isSelected, setIsSelected] = useState<SubscriptionItem | null>(null);
+  
+  // Enhanced ad state with loading and error handling
+  const [type, setType] = useState<'WatchAds' | 'Ads'>('WatchAds');
+  const [isAlreadyWatch, setIsAlreadyWatch] = useState('');
+  const [isLoginPopUp, setIsLoginPopUp] = useState(false);
+  const [isAdLoading, setIsAdLoading] = useState(false);
+  const [adError, setAdError] = useState<string | null>(null);
+  
+  // Auth and user data
+  const user = useAuthUser();
+  const userInfo = user?._id;
+  const userProfileInfo = user;
+  
+  // Rewards data
+  const { data: checkInData, refetch: refetchCheckIn } = useCheckInList();
+  const { data: benefitsData, refetch: refetchBenefits } = useBenefits();
+  const { data: balanceData, refetch: refetchBalance } = useBalance(userInfo as string);
+  const { data: rewardHistoryData, refetch: refetchHistory } = useRewardHistory(userInfo as string);
+  
+  const balance = balanceData?.data || mockBalanceData;
+  const checkInList = checkInData?.data || mockCheckInList;
+  const benefitList = benefitsData?.data || mockBenefitData;
+  const rewardCoinHistory = rewardHistoryData?.data || [];
+  const isLoading = !checkInData || !benefitsData || !balanceData;
+  
+  // WORKING AD IMPLEMENTATION FROM OLD PROJECT
+  const { isLoaded, isClosed, load, show, isEarnedReward, reward } = useRewardedAd(
+    Platform.OS === 'ios' ? AD_UNITS.REWARD_AD_UNIT_IOS : AD_UNITS.REWARD_AD_UNIT
+  );
+  
+  // Enhanced ad loading with proper error handling
+  const loadAd = useCallback(async () => {
+    try {
+      setIsAdLoading(true);
+      setAdError(null);
+      console.log('[REWARDS DEBUG] Loading ad...');
+      await load();
+      console.log('[REWARDS DEBUG] Ad load called successfully');
+    } catch (error) {
+      console.error('[REWARDS DEBUG] Error loading ad:', error);
+      setAdError('Failed to load ad. Please try again.');
+    } finally {
+      setIsAdLoading(false);
+    }
+  }, [load]);
+  
+  // Enhanced ad showing with proper error handling
+  const showAd = useCallback(async (adType: 'WatchAds' | 'Ads') => {
+    try {
+      setIsAdLoading(true);
+      setAdError(null);
+      setType(adType);
+      
+      if (!isLoaded) {
+        console.log('[REWARDS DEBUG] Ad not loaded, loading first...');
+        await loadAd();
+        // Wait a bit for the ad to load
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+      if (isLoaded) {
+        console.log('[REWARDS DEBUG] Showing ad...');
+        await show();
+        console.log('[REWARDS DEBUG] Ad show called successfully');
+      } else {
+        setAdError('Ad is still loading. Please wait a moment and try again.');
+      }
+    } catch (error) {
+      console.error('[REWARDS DEBUG] Error showing ad:', error);
+      setAdError('Failed to show ad. Please try again.');
+    } finally {
+      setIsAdLoading(false);
+    }
+  }, [isLoaded, loadAd, show]);
+  
+  // Handle ad reward (WORKING LOGIC FROM OLD PROJECT)
+  useEffect(() => {
+    if (isEarnedReward && reward && userInfo) {
+      if (type === 'WatchAds') {
+        onAdStatus(reward);
+        onGetBalance(userInfo);
+        setIsAlreadyWatch(moment().format('DD-MMM-YYYY'));
+        MMKVStorage.set('alreadyWatch', moment().format('DD-MMM-YYYY'));
+      } else {
+        onAdStatus(reward);
+        onGetBalance(userInfo);
+      }
+    }
+  }, [isEarnedReward, reward, userInfo, type]);
+  
+  // API functions (WORKING LOGIC FROM OLD PROJECT)
+  const onAdStatus = async (data: any) => {
+    try {
+      console.log('Ad status updated:', data);
+      Alert.alert('Success', 'Ad reward processed successfully!');
+    } catch (error) {
+      console.error('Error updating ad status:', error);
+    }
+  };
+
+  const onGetBalance = async (userId: string) => {
+    try {
+      console.log('Getting balance for user:', userId);
+      await refetch(); // Refetch rewards data
+    } catch (error) {
+      console.error('Error getting balance:', error);
+    }
+  };
+  
+  // Enhanced ad handlers with proper user validation and error handling
+  const handleShowAd = async () => {
+    if (!userProfileInfo) {
+      setIsLoginPopUp(true);
+      return;
+    }
+    
+    if (isAlreadyWatch === moment().format('DD-MMM-YYYY')) {
+      Alert.alert('Already Completed', 'You have already watched an ad today. Come back tomorrow!');
+      return;
+    }
+    
+    await showAd('WatchAds');
+  };
+
+  const handleWatShowAd = async () => {
+    if (!userProfileInfo) {
+      setIsLoginPopUp(true);
+      return;
+    }
+    
+    await showAd('Ads');
+  };
+  
+  // Check if already watched today
+  useEffect(() => {
+    const checkAlreadyWatch = async () => {
+      const alreadyWatch = MMKVStorage.get<string>('alreadyWatch');
+      const today = moment().format('DD-MMM-YYYY');
+      setIsAlreadyWatch(alreadyWatch || '');
+    };
+    
+    if (isFocused) {
+      checkAlreadyWatch();
+    }
+  }, []);
+  
+  // Load ad on mount and when screen is focused
+  useEffect(() => {
+    if (userProfileInfo) {
+      loadAd();
+    }
+  }, [userProfileInfo, loadAd]);
+  
+  const refetch = async () => {
+    await Promise.all([
+      refetchCheckIn(),
+      refetchBenefits(),
+      refetchBalance(),
+      refetchHistory()
+    ]);
+  };
 
   const onRefresh = async () => {
     setRefreshloading(true);
-    // Simulate refresh
+    await refetch();
     setTimeout(() => {
       setRefreshloading(false);
     }, 2000);
@@ -165,7 +343,6 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const marginBottom = Platform.OS === 'android' ? tabBarHeight - 50 : tabBarHeight + insets.bottom - 20;
 
   const getIconByDescription = (text: string) => {
-    // Mock icon component - replace with actual SvgIcons
     return (
       <View style={{
         width: isLargeDevice ? width * 0.04 : width * 0.07,
@@ -230,7 +407,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                   <Text style={styles.coinText}>🪙</Text>
                 </View>
                 <Text style={styles.balanceAmount}>
-                  {mockBalanceData.coinsQuantity.totalCoins}
+                  {balance.coinsQuantity.totalCoins}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -245,7 +422,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                 </Text>
               </View>
               <FlatList
-                data={mockCheckInList}
+                data={checkInList}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 renderItem={({ item }) => (
@@ -262,7 +439,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                           {mockUserProfileInfo.checkInStreak >= parseInt(day.replace('day', '')) ? '✓' : '🪙'}
                         </Text>
                         <Text style={[styles.heading, styles.rewardCardText]}>
-                          {item[day]}
+                          {(item as any)[day]}
                         </Text>
                       </View>
                     ))}
@@ -273,10 +450,22 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
               <TouchableOpacity
                 style={[
                   styles.checkInButton,
-                  { backgroundColor: '#7d2537' }
+                  { backgroundColor: '#7d2537' },
+                  (isAlreadyWatch === moment().format('DD-MMM-YYYY') || isAdLoading) && styles.disabledButton
                 ]}
+                onPress={handleShowAd}
+                disabled={isAlreadyWatch === moment().format('DD-MMM-YYYY') || isAdLoading}
               >
-                <Text style={styles.checkInButtonText}>CHECK IN</Text>
+                {isAdLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={styles.checkInButtonText}>Loading...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.checkInButtonText}>
+                    {isAlreadyWatch === moment().format('DD-MMM-YYYY') ? 'COMPLETED' : 'CHECK IN'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -323,16 +512,16 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                         <Text style={styles.planDescription}>
                           {item.description}
                         </Text>
-                </View>
+                      </View>
                     </LinearGradient>
                     <View style={styles.subscriptionPrice}>
                       <Text style={styles.priceText}>
                         {currencyFormat(item.price)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             ))}
 
             {/* Refill Coins */}
@@ -429,7 +618,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
             {/* Today's Benefits */}
             <View style={styles.benefitsContainer}>
               <Text style={styles.sectionTitle}>Today's Benefits</Text>
-              {mockBenefitData.map((item) => (
+              {benefitList.map((item) => (
                 <View key={item._id} style={styles.benefitCard}>
                   <Text style={styles.benefitTitle}>
                     {item.title}
@@ -447,11 +636,23 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                       </View>
                     </View>
                     <TouchableOpacity
-                      style={styles.watchAdsButton}
+                      style={[
+                        styles.watchAdsButton,
+                        isAdLoading && styles.disabledButton
+                      ]}
+                      onPress={handleWatShowAd}
+                      disabled={isAdLoading}
                     >
-                      <Text style={styles.watchAdsButtonText}>
-                        {item.btntitle}
-                      </Text>
+                      {isAdLoading ? (
+                        <View style={styles.loadingContainer}>
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                          <Text style={styles.watchAdsButtonText}>Loading...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.watchAdsButtonText}>
+                          {item.btntitle} watch ad
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -514,7 +715,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
                       </View>
                     ))}
                   </View>
-                  
+                 
                   <View style={styles.tipsContainer}>
                     <Text style={styles.tipsTitle}>Tips</Text>
                     {tips.map((tip, index) => (
@@ -557,7 +758,7 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
             </View>
           </View>
         )}
-        </View>
+      </View>
     </LinearGradient>
   );
 };
@@ -579,7 +780,6 @@ const styles = StyleSheet.create({
     marginHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
     marginTop: isLargeDevice ? width * 0.02 : width * 0.04,
     borderRadius: 16,
-    // elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -607,7 +807,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 20,
     padding: isLargeDevice ? width * 0.025 : width * 0.04,
-    // elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
@@ -657,7 +856,6 @@ const styles = StyleSheet.create({
     margin: isLargeDevice ? width * 0.02 : width * 0.04,
     padding: isLargeDevice ? width * 0.025 : width * 0.04,
     borderRadius: 20,
-    // elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -682,7 +880,6 @@ const styles = StyleSheet.create({
     margin: width * 0.01,
     borderRadius: 16,
     padding: isLargeDevice ? width * 0.015 : width * 0.025,
-    // elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -713,7 +910,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 20,
     alignSelf: 'center',
-    // elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -727,6 +923,13 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
     letterSpacing: 0.5,
   },
+  disabledButton: {
+    backgroundColor: '#95A5A6',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: isLargeDevice ? 16 : 20,
     fontWeight: '600',
@@ -737,6 +940,86 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
     letterSpacing: 0.5,
   },
+  benefitsContainer: {
+    margin: isLargeDevice ? width * 0.01 : width * 0.02,
+    padding: 0,
+  },
+  benefitCard: {
+    padding: isLargeDevice ? width * 0.025 : width * 0.04,
+    marginTop: isLargeDevice ? width * 0.001 : width * 0.01,
+    borderRadius: 20,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  benefitTitle: {
+    fontSize: isLargeDevice ? 16 : 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  benefitContent: {
+    flexDirection: 'row',
+    marginTop: isLargeDevice ? width * 0.001 : width * 0.01,
+  },
+  benefitLeft: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  benefitDescription: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: isLargeDevice ? width * 0.01 : 5,
+    fontSize: isLargeDevice ? 13 : 14,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  coinsDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  coinIcon: {
+    fontSize: isLargeDevice ? 16 : 24,
+  },
+  coinsText: {
+    fontSize: isLargeDevice ? 16 : 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginLeft: width * 0.01,
+  },
+  watchAdsButton: {
+    backgroundColor: '#7d2537',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  watchAdsButtonText: {
+    color: '#ffffff',
+    fontSize: isLargeDevice ? 12 : 14,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginVertical: isLargeDevice ? width * 0.015 : width * 0.03,
+  },
+  termsLink: {
+    textDecorationLine: 'underline',
+    fontSize: isLargeDevice ? 12 : 16,
+    color: 'rgba(255, 255, 255, 0.1)',
+    fontWeight: 'bold',
+  },
+  termsText: {
+    fontSize: isLargeDevice ? 12 : 16,
+    color: 'rgba(255, 255, 255, 0.1)',
+  },
   subscriptionRow: {
     justifyContent: 'flex-start',
     flex: 0,
@@ -745,7 +1028,6 @@ const styles = StyleSheet.create({
     padding: isLargeDevice ? width * 0.015 : width * 0.025,
     borderRadius: 20,
     width: isLargeDevice ? width * 0.5 : width,
-    // elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
@@ -825,7 +1107,6 @@ const styles = StyleSheet.create({
     height: isLargeDevice ? width * 0.2 : width * 0.3,
     width: isLargeDevice ? width * 0.227 : width * 0.458,
     justifyContent: 'center',
-    // elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -892,88 +1173,6 @@ const styles = StyleSheet.create({
     marginLeft: isLargeDevice ? width * 0.005 : width * 0.01,
     fontSize: isLargeDevice ? 12 : 14,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  benefitsContainer: {
-    margin: isLargeDevice ? width * 0.01 : width * 0.02,
-    padding: 0,
-  },
-  benefitCard: {
-    padding: isLargeDevice ? width * 0.025 : width * 0.04,
-    marginTop: isLargeDevice ? width * 0.001 : width * 0.01,
-    borderRadius: 20,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    // elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  benefitTitle: {
-    fontSize: isLargeDevice ? 16 : 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  benefitContent: {
-    flexDirection: 'row',
-    marginTop: isLargeDevice ? width * 0.001 : width * 0.01,
-  },
-  benefitLeft: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  benefitDescription: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: isLargeDevice ? width * 0.01 : 5,
-    fontSize: isLargeDevice ? 13 : 14,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  coinsDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  coinIcon: {
-    fontSize: isLargeDevice ? 16 : 24,
-  },
-  coinsText: {
-    fontSize: isLargeDevice ? 16 : 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginLeft: width * 0.01,
-  },
-  watchAdsButton: {
-    backgroundColor: '#7d2537',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    // elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  watchAdsButtonText: {
-    color: '#ffffff',
-    fontSize: isLargeDevice ? 12 : 14,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-  },
-  termsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: isLargeDevice ? width * 0.015 : width * 0.03,
-  },
-  termsLink: {
-    textDecorationLine: 'underline',
-    fontSize: isLargeDevice ? 12 : 16,
-    color: 'rgba(255, 255, 255, 0.1)',
-    fontWeight: 'bold',
-  },
-  termsText: {
-    fontSize: isLargeDevice ? 12 : 16,
-    color: 'rgba(255, 255, 255, 0.1)',
   },
   modalOverlay: {
     position: 'absolute',

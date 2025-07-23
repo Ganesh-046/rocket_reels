@@ -2,20 +2,21 @@ import apiInterceptor from '../lib/api-interceptor';
 import { ENDPOINTS, CACHE_TTL } from '../config/api';
 import {
   ApiResponse,
-  CheckInReward,
-  Benefit,
-  RewardBalance,
+  CheckInDay,
+  BenefitItem,
+  BalanceResponse,
   SubscriptionPlan,
   RechargePlan,
-  Transaction,
+  RechargeHistoryItem,
+  RewardCoinHistoryItem,
   UnlockedEpisode,
 } from '../types/api';
 
 // Rewards Service
 class RewardsService {
   // Check-in Rewards
-  async getCheckInList(): Promise<ApiResponse<CheckInReward[]>> {
-    return apiInterceptor.get<CheckInReward[]>(ENDPOINTS.REWARDS.CHECK_IN_LIST, {
+  async getCheckInList(): Promise<ApiResponse<CheckInDay[]>> {
+    return apiInterceptor.get<CheckInDay[]>(ENDPOINTS.REWARDS.CHECK_IN_LIST, {
       cacheKey: 'check_in_list',
       cacheTTL: CACHE_TTL.STATIC_CONTENT,
     });
@@ -26,24 +27,24 @@ class RewardsService {
   }
 
   // Benefits
-  async getBenefits(): Promise<ApiResponse<Benefit[]>> {
-    return apiInterceptor.get<Benefit[]>(ENDPOINTS.REWARDS.BENEFITS, {
+  async getBenefits(): Promise<ApiResponse<BenefitItem[]>> {
+    return apiInterceptor.get<BenefitItem[]>(ENDPOINTS.REWARDS.BENEFITS, {
       cacheKey: 'benefits',
       cacheTTL: CACHE_TTL.STATIC_CONTENT,
     });
   }
 
   // Balance
-  async getBalance(userId: string): Promise<ApiResponse<RewardBalance>> {
-    return apiInterceptor.get<RewardBalance>(`${ENDPOINTS.REWARDS.BALANCE}/${userId}`, {
+  async getBalance(userId: string): Promise<ApiResponse<BalanceResponse>> {
+    return apiInterceptor.get<BalanceResponse>(`${ENDPOINTS.REWARDS.BALANCE}/${userId}`, {
       cacheKey: `balance_${userId}`,
       cacheTTL: CACHE_TTL.USER_DATA,
     });
   }
 
   // Reward History
-  async getRewardHistory(userId: string): Promise<ApiResponse<Transaction[]>> {
-    return apiInterceptor.get<Transaction[]>(`${ENDPOINTS.REWARDS.REWARD_HISTORY}/${userId}`, {
+  async getRewardHistory(userId: string): Promise<ApiResponse<RewardCoinHistoryItem[]>> {
+    return apiInterceptor.get<RewardCoinHistoryItem[]>(`${ENDPOINTS.REWARDS.REWARD_HISTORY}/${userId}`, {
       cacheKey: `reward_history_${userId}`,
       cacheTTL: CACHE_TTL.USER_DATA,
     });
@@ -82,6 +83,10 @@ class RewardsService {
       cacheKey: `unlocked_episode_${episodeId}`,
       cacheTTL: CACHE_TTL.USER_DATA,
     });
+  }
+
+  async createPaymentOrder(userId: string): Promise<ApiResponse<any>> {
+    return apiInterceptor.post(`${ENDPOINTS.SUBSCRIPTION.CREATE_ORDER}/${userId}`);
   }
 }
 
@@ -131,8 +136,8 @@ class RechargeService {
     return apiInterceptor.post(ENDPOINTS.RECHARGE.UPDATE_STATUS, paymentData);
   }
 
-  async getRechargeHistory(userId: string): Promise<ApiResponse<Transaction[]>> {
-    return apiInterceptor.get<Transaction[]>(`${ENDPOINTS.RECHARGE.HISTORY}/${userId}`, {
+  async getRechargeHistory(userId: string): Promise<ApiResponse<RechargeHistoryItem[]>> {
+    return apiInterceptor.get<RechargeHistoryItem[]>(`${ENDPOINTS.RECHARGE.HISTORY}/${userId}`, {
       cacheKey: `recharge_history_${userId}`,
       cacheTTL: CACHE_TTL.USER_DATA,
     });

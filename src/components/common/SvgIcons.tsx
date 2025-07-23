@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 interface SvgIconsProps {
@@ -42,6 +42,28 @@ export const SvgIcons: React.FC<SvgIconsProps> = ({ name, size, color }) => {
     notifications: 'notifications',
     notificationsOff: 'notifications-off',
   };
+
+  // Special icons for rewards
+  const specialIcons: { [key: string]: string } = {
+    coin: '🪙',
+    'right-check': '✅',
+    unlimited: '∞',
+    hd: 'HD',
+    'daily-reward': '🎁',
+    'ads-free': '🚫📺',
+    'member-only': '👑',
+  };
+
+  // Check if it's a special icon
+  if (specialIcons[name]) {
+    return (
+      <View>
+        <Text style={{ fontSize: size, color, fontWeight: name === 'hd' ? 'bold' : 'normal' }}>
+          {specialIcons[name]}
+        </Text>
+      </View>
+    );
+  }
 
   const iconName = iconMap[name] || name;
 

@@ -1,6 +1,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { View, Text, FlatList, Animated, RefreshControl, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, FlatList, Animated, RefreshControl, StyleSheet, Platform, Dimensions, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import useTheme from '../hooks/useTheme';
 import useThemedStyles from '../hooks/useThemedStyles';
@@ -23,7 +23,6 @@ import GenreTab from '../components/Home/GenreTab';
 import PerformanceMonitor from '../components/common/PerformanceMonitor';
 import Skeleton from '../components/Skeleton';
 
-
 // Import optimized components and hooks
 import {
  HomePageSkeleton,
@@ -37,7 +36,6 @@ import {
  useOptimizedRefresh,
  useOptimizedLoading,
 } from '../hooks/useHomeScreenOptimization';
-
 
 // Import API hooks and types
 import {
@@ -981,122 +979,121 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
  }
 
 
- return (
-   <>
-     <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} />
-     <LinearGradient
-       style={style.container}
-       colors={gradientColorsArray.filter(color => color && typeof color === 'string')}
-     >
-     <View style={[style.container, {
-       marginTop: insets.top,
-       marginBottom: isHide ? tabBarHeight : 0
-     }]}>
-       <Animated.ScrollView
-         scrollEventThrottle={16}
-         onScroll={onScroll}
-         scrollEnabled={!isBannerScrolling}
-         refreshControl={
-           <RefreshControl
-             refreshing={loadingStates.refreshing}
-             onRefresh={onRefresh}
-             colors={['#CB2D4D']}
-             tintColor={colors.PRIMARYWHITE}
-             progressBackgroundColor={colors.PRIMARYBLACK}
-             enabled={isRefreshEnabled}
-             progressViewOffset={0}
-           />
-         }
-         showsVerticalScrollIndicator={false}
-         nestedScrollEnabled={true}
-         removeClippedSubviews={Platform.OS === 'android'}
-         keyboardShouldPersistTaps="handled"
-         contentInsetAdjustmentBehavior="automatic"
-         directionalLockEnabled={true}
-         alwaysBounceVertical={false}
-         alwaysBounceHorizontal={false}
-         bounces={isRefreshEnabled}
-         scrollIndicatorInsets={{ right: 1 }}
-         contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
-         contentOffset={{ x: 0, y: 0 }}
-         onScrollBeginDrag={(event) => {
-           const { x, y } = event.nativeEvent.contentOffset;
-           if (Math.abs(x) > Math.abs(y)) {
-             bannerScrollRef.current = true;
-             scrollDirectionRef.current = 'horizontal';
-             refreshDisabledRef.current = true;
-           }
-         }}
-         onScrollEndDrag={() => {
-           setTimeout(() => {
-             bannerScrollRef.current = false;
-             scrollDirectionRef.current = 'vertical';
-             refreshDisabledRef.current = false;
-           }, 1000);
-         }}
-         onMomentumScrollBegin={(event) => {
-           const { x, y } = event.nativeEvent.contentOffset;
-           if (Math.abs(x) > Math.abs(y)) {
-             bannerScrollRef.current = true;
-             scrollDirectionRef.current = 'horizontal';
-             refreshDisabledRef.current = true;
-           }
-         }}
-         onMomentumScrollEnd={() => {
-           setTimeout(() => {
-             bannerScrollRef.current = false;
-             scrollDirectionRef.current = 'vertical';
-             refreshDisabledRef.current = false;
-           }, 1000);
-         }}
-       >
-         {/* Header with genre tabs and search */}
-         <View style={[style.directionContainer, style.headerContainer]}>
-           <FlatList
-             data={[
-               { name: 'All', slug: 'all', _id: 'all' },
-               ...(genresData?.data || [])
-             ]}
-             horizontal
-             showsHorizontalScrollIndicator={false}
-             renderItem={({ item, index }) => (
-               <GenreTab
-                 item={item}
-                 index={index}
-                 isSelected={isSelected}
-                 setIsSelected={setIsSelected}
-                 setCurrentBannerIndex={setCurrentBannerIndex}
-                 style={style}
-                 colors={colors}
-                 appFonts={appFonts}
-                 isLargeDevice={isLargeDevice}
-                 loadingStates={loadingStates}
-                 navigation={navigation}
-               />
-             )}
-             {...optimizedFlatListConfig}
-             initialNumToRender={3}
-             maxToRenderPerBatch={2}
-             windowSize={5}
-             getItemLayout={(data, index) => ({
-               length: 80,
-               offset: 80 * index,
-               index,
-             })}
-           />
-           <PressableButton
-             onPress={() => navigation?.navigate('Search')}
-             style={style.searchInput}
-             disabled={isLoading}
-           >
-             <SvgIcons
-               name={'search'}
-               size={isLargeDevice ? width * .03 : width * 0.05}
-               color={isLoading ? colors.PRIMARYWHITEFOUR : colors.PRIMARYWHITE}
-             />
-           </PressableButton>
-         </View>
-
+  return (
+    <>
+      <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} />
+      <LinearGradient 
+        style={style.container} 
+        colors={gradientColorsArray.filter(color => color && typeof color === 'string')}
+      >
+      <View style={[style.container, {
+        marginTop: insets.top,
+        marginBottom: isHide ? tabBarHeight : 0
+      }]}>
+        <Animated.ScrollView
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+          scrollEnabled={!isBannerScrolling}
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingStates.refreshing}
+              onRefresh={onRefresh}
+              colors={['#CB2D4D']}
+              tintColor={colors.PRIMARYWHITE}
+              progressBackgroundColor={colors.PRIMARYBLACK}
+              enabled={isRefreshEnabled}
+              progressViewOffset={0}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          removeClippedSubviews={Platform.OS === 'android'}
+          keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
+          directionalLockEnabled={true}
+          alwaysBounceVertical={false}
+          alwaysBounceHorizontal={false}
+          bounces={isRefreshEnabled}
+          scrollIndicatorInsets={{ right: 1 }}
+          contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
+          contentOffset={{ x: 0, y: 0 }}
+          onScrollBeginDrag={(event) => {
+            const { x, y } = event.nativeEvent.contentOffset;
+            if (Math.abs(x) > Math.abs(y)) {
+              bannerScrollRef.current = true;
+              scrollDirectionRef.current = 'horizontal';
+              refreshDisabledRef.current = true;
+            }
+          }}
+          onScrollEndDrag={() => {
+            setTimeout(() => {
+              bannerScrollRef.current = false;
+              scrollDirectionRef.current = 'vertical';
+              refreshDisabledRef.current = false;
+            }, 1000);
+          }}
+          onMomentumScrollBegin={(event) => {
+            const { x, y } = event.nativeEvent.contentOffset;
+            if (Math.abs(x) > Math.abs(y)) {
+              bannerScrollRef.current = true;
+              scrollDirectionRef.current = 'horizontal';
+              refreshDisabledRef.current = true;
+            }
+          }}
+          onMomentumScrollEnd={() => {
+            setTimeout(() => {
+              bannerScrollRef.current = false;
+              scrollDirectionRef.current = 'vertical';
+              refreshDisabledRef.current = false;
+            }, 1000);
+          }}
+        >
+          {/* Header with genre tabs and search */}
+          <View style={[style.directionContainer, style.headerContainer]}>
+            <FlatList
+              data={[
+                { name: 'All', slug: 'all', _id: 'all' },
+                ...(genresData?.data || [])
+              ]}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item, index }) => (
+                <GenreTab
+                  item={item}
+                  index={index}
+                  isSelected={isSelected}
+                  setIsSelected={setIsSelected}
+                  setCurrentBannerIndex={setCurrentBannerIndex}
+                  style={style}
+                  colors={colors}
+                  appFonts={appFonts}
+                  isLargeDevice={isLargeDevice}
+                  loadingStates={loadingStates}
+                  navigation={navigation}
+                />
+              )}
+              {...optimizedFlatListConfig}
+              initialNumToRender={3}
+              maxToRenderPerBatch={2}
+              windowSize={5}
+              getItemLayout={(data, index) => ({
+                length: 80,
+                offset: 80 * index,
+                index,
+              })}
+            />
+            <PressableButton
+              onPress={() => navigation?.navigate('Search')}
+              style={style.searchInput}
+              disabled={isLoading}
+            >
+              <SvgIcons
+                name={'search'}
+                size={isLargeDevice ? width * .03 : width * 0.05}
+                color={isLoading ? colors.PRIMARYWHITEFOUR : colors.PRIMARYWHITE}
+              />
+            </PressableButton>
+          </View>
 
          {/* Content based on selection */}
          {isSelected === 'all' ? (
@@ -1144,13 +1141,8 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
                colors={colors}
              />
 
-
-
-
-
-
-              {/* Continue Watching - Only show for authenticated users */}
-              {user && continueWatchingData.length > 0 && (
+             {/* Continue Watching - Only show for authenticated users */}
+             {user && continueWatchingData.length > 0 && (
                <TopContentSection
                  title="Continue Watching"
                  data={continueWatchingData}
