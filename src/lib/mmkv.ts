@@ -305,6 +305,39 @@ class MMKVStorage {
     }
   }
 
+  // Watch Progress Management
+  static updateWatchProgress(contentId: string, episodeId: string, progress: number): void {
+    try {
+      const storage = getStorage();
+      const progressKey = `watchProgress_${contentId}_${episodeId}`;
+      const progressData = {
+        contentId,
+        episodeId,
+        progress,
+        timestamp: Date.now(),
+      };
+      storage.set(progressKey, JSON.stringify(progressData));
+    } catch (error) {
+      console.warn('[MMKV] Failed to update watch progress:', error);
+    }
+  }
+
+  static getWatchProgress(contentId: string, episodeId: string): number {
+    try {
+      const storage = getStorage();
+      const progressKey = `watchProgress_${contentId}_${episodeId}`;
+      const progressData = storage.getString(progressKey);
+      if (progressData) {
+        const parsed = JSON.parse(progressData);
+        return parsed.progress || 0;
+      }
+      return 0;
+    } catch (error) {
+      console.warn('[MMKV] Failed to get watch progress:', error);
+      return 0;
+    }
+  }
+
   // Settings Management
   static getSettings(): any {
     try {
@@ -390,6 +423,27 @@ class MMKVStorage {
       cacheKeys.forEach(key => storage.delete(key));
     } catch (error) {
       console.warn('[MMKV] Failed to clear cache:', error);
+    }
+  }
+
+  // Get storage size (approximate)
+  static getSize(): number {
+    try {
+      const storage = getStorage();
+      const keys = storage.getAllKeys();
+      let totalSize = 0;
+      
+      keys.forEach(key => {
+        const value = storage.getString(key);
+        if (value) {
+          totalSize += key.length + value.length;
+        }
+      });
+      
+      return totalSize;
+    } catch (error) {
+      console.warn('[MMKV] Failed to get storage size:', error);
+      return 0;
     }
   }
 

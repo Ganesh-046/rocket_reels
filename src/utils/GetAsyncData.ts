@@ -1,25 +1,9 @@
-import { MMKV } from 'react-native-mmkv';
-
-// Lazy initialization of MMKV storage
-let storageInstance: MMKV | null = null;
-
-const getStorage = (): MMKV => {
-  if (!storageInstance) {
-    try {
-      storageInstance = new MMKV();
-    } catch (error) {
-      console.warn('MMKV initialization failed in GetAsyncData:', error);
-      throw new Error('MMKV not available - React Native may not be ready');
-    }
-  }
-  return storageInstance;
-};
+import MMKVStorage from '../lib/mmkv';
 
 export const getAsyncData = async (key: string): Promise<string | null> => {
   try {
-    const storage = getStorage();
-    const value = storage.getString(key);
-    return value || null;
+    const value = MMKVStorage.get(key);
+    return typeof value === 'string' ? value : null;
   } catch (error) {
     console.warn(`Failed to get async data for key "${key}":`, error);
     return null;
@@ -28,8 +12,7 @@ export const getAsyncData = async (key: string): Promise<string | null> => {
 
 export const setAsyncData = async (key: string, value: string): Promise<void> => {
   try {
-    const storage = getStorage();
-    storage.set(key, value);
+    MMKVStorage.set(key, value);
   } catch (error) {
     console.warn(`Failed to set async data for key "${key}":`, error);
   }
@@ -37,8 +20,7 @@ export const setAsyncData = async (key: string, value: string): Promise<void> =>
 
 export const removeAsyncData = async (key: string): Promise<void> => {
   try {
-    const storage = getStorage();
-    storage.delete(key);
+    MMKVStorage.remove(key);
   } catch (error) {
     console.warn(`Failed to remove async data for key "${key}":`, error);
   }

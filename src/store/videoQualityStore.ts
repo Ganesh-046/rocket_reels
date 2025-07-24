@@ -1,20 +1,5 @@
 import { create } from 'zustand';
-import { MMKV } from 'react-native-mmkv';
-
-// Lazy initialization of MMKV storage for video quality settings
-let storageInstance: MMKV | null = null;
-
-const getStorage = (): MMKV => {
-  if (!storageInstance) {
-    try {
-      storageInstance = new MMKV();
-    } catch (error) {
-      console.warn('MMKV initialization failed in videoQualityStore:', error);
-      throw new Error('MMKV not available - React Native may not be ready');
-    }
-  }
-  return storageInstance;
-};
+import MMKVStorage from '../lib/mmkv';
 
 export type VideoQuality = '360p' | '480p' | '720p' | '1080p' | 'auto';
 
@@ -29,8 +14,7 @@ interface VideoQualityState {
 // Load initial quality from MMKV
 const loadInitialQuality = (): VideoQuality => {
   try {
-    const storage = getStorage();
-    const saved = storage.getString('currentQuality');
+    const saved = MMKVStorage.get('currentQuality');
     return saved as VideoQuality || 'auto';
   } catch (error) {
     console.warn('Failed to load initial video quality:', error);
@@ -49,8 +33,7 @@ export const useVideoQualityStore = create<VideoQualityState>((set, get) => ({
     
     // Save to MMKV
     try {
-      const storage = getStorage();
-      storage.set('currentQuality', quality);
+      MMKVStorage.set('currentQuality', quality);
     } catch (error) {
       console.error('Error saving video quality:', error);
     }
@@ -70,8 +53,7 @@ export const useVideoQualityStore = create<VideoQualityState>((set, get) => ({
     
     // Save to MMKV
     try {
-      const storage = getStorage();
-      storage.set('currentQuality', 'auto');
+      MMKVStorage.set('currentQuality', 'auto');
     } catch (error) {
       console.error('Error resetting video quality:', error);
     }

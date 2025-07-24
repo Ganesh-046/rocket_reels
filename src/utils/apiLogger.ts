@@ -1,19 +1,4 @@
-import { MMKV } from 'react-native-mmkv';
-
-// Lazy initialization of MMKV storage for API logs
-let apiLogStorageInstance: MMKV | null = null;
-
-const getApiLogStorage = (): MMKV => {
-  if (!apiLogStorageInstance) {
-    try {
-      apiLogStorageInstance = new MMKV();
-    } catch (error) {
-      console.warn('MMKV initialization failed in apiLogger:', error);
-      throw new Error('MMKV not available - React Native may not be ready');
-    }
-  }
-  return apiLogStorageInstance;
-};
+import MMKVStorage from '../lib/mmkv';
 
 interface ApiLogEntry {
   timestamp: string;
@@ -141,8 +126,7 @@ class ApiLogger {
   // Save logs to MMKV
   private saveLogs() {
     try {
-      const storage = getApiLogStorage();
-      storage.set('apiLogs', JSON.stringify(this.logs));
+      MMKVStorage.set('apiLogs', this.logs);
     } catch (error) {
       console.error('Error saving API logs:', error);
     }
@@ -151,10 +135,9 @@ class ApiLogger {
   // Load logs from MMKV
   loadLogs() {
     try {
-      const storage = getApiLogStorage();
-      const savedLogs = storage.getString('apiLogs');
+      const savedLogs = MMKVStorage.get('apiLogs');
       if (savedLogs) {
-        this.logs = JSON.parse(savedLogs);
+        this.logs = savedLogs as ApiLogEntry[];
       }
     } catch (error) {
       console.error('Error loading API logs:', error);
