@@ -327,7 +327,7 @@ class ApiService {
   // ============================================================================
 
   async getBalance(userId: string): Promise<ApiResponse<BalanceResponse>> {
-    const response = await this.api.get(ENDPOINTS.REWARDS.BALANCE);
+    const response = await this.api.get(`${ENDPOINTS.REWARDS.BALANCE}/${userId}`);
     return response.data;
   }
 
@@ -352,7 +352,7 @@ class ApiService {
   }
 
   async purchaseSubscription(data: PurchaseSubscriptionRequest): Promise<ApiResponse<{ message: string; orderId: string }>> {
-    const response = await this.api.post(ENDPOINTS.SUBSCRIPTION.CREATE_ORDER, data);
+    const response = await this.api.post(ENDPOINTS.SUBSCRIPTION.PURCHASE, data);
     return response.data;
   }
 
@@ -372,12 +372,12 @@ class ApiService {
   }
 
   async getRechargeHistory(userId: string): Promise<ApiResponse<RechargeHistoryItem[]>> {
-    const response = await this.api.get(ENDPOINTS.RECHARGE.HISTORY);
+    const response = await this.api.get(`${ENDPOINTS.RECHARGE.HISTORY}/${userId}`);
     return response.data;
   }
 
   async getRewardHistory(userId: string): Promise<ApiResponse<RewardCoinHistoryItem[]>> {
-    const response = await this.api.get(ENDPOINTS.REWARDS.REWARD_HISTORY);
+    const response = await this.api.get(`${ENDPOINTS.REWARDS.REWARD_HISTORY}/${userId}`);
     return response.data;
   }
 

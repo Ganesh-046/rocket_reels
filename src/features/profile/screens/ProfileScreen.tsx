@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Alert,
+  Share,
+  Clipboard,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -27,12 +30,15 @@ import { useAuthStore, useAuthUser } from '../../../store/auth.store';
 // MMKV Storage
 import MMKVStorage from '../../../lib/mmkv';
 
+// API Service
+import apiService from '../../../services/api.service';
+
 const { width, height } = Dimensions.get('window');
 const isLargeDevice = width > 768;
 
 interface NavigationProps {
   navigation: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: any) => void;
     replace: (screen: string) => void;
   };
 }
@@ -62,6 +68,15 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const user = useAuthUser();
   const { logout } = useAuthStore();
 
+  // State for API data
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [balanceData, setBalanceData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // State for invitation modal
+  const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false);
+  const [isCopySuccess, setIsCopySuccess] = useState(false);
+
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     const shouldHide = offsetY > 1;
@@ -69,6 +84,126 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   };
 
   const marginBottom = Platform.OS === 'android' ? tabBarHeight - 50 : tabBarHeight + insets.bottom - 20;
+
+  // API Functions
+  const getUserProfile = async (userId: string) => {
+    try {
+      setLoading(true);
+      console.log('🔍 Fetching user profile for:', userId);
+      const response = await apiService.getUserProfile(userId);
+      console.log('📱 User profile response:', response);
+      
+      if (response.status === 200 && response.data) {
+        setUserProfile(response.data);
+        console.log('✅ User profile set:', response.data);
+      } else {
+        console.warn('⚠️ User profile response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get user profile error:', error);
+      // Show error to user
+      Alert.alert('Error', 'Failed to load user profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getUserBalance = async (userId: string) => {
+    try {
+      console.log('💰 Fetching balance for:', userId);
+      const response = await apiService.getBalance(userId);
+      console.log('💳 Balance response:', response);
+      
+      if (response.status === 200 && response.data) {
+        setBalanceData(response.data);
+        console.log('✅ Balance set:', response.data);
+      } else {
+        console.warn('⚠️ Balance response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get balance error:', error);
+      // Show error to user
+      Alert.alert('Error', 'Failed to load wallet balance. Please try again.');
+    }
+  };
+
+  const deleteAccount = async (userId: string) => {
+    try {
+      const response = await apiService.deleteAccount(userId);
+      if (response.status === 200) {
+        logout();
+        navigation.replace('Auth');
+      }
+      return response;
+    } catch (error) {
+      console.error('Delete account error:', error);
+    }
+  };
+
+  // Invitation Modal Functions
+  const onShareWhatsApp = async () => {
+    try {
+      const currentReferralCode = userProfile?.referralCode || 'N/A';
+      const message = `Join Rocket Reels and earn coins! Use my referral code: ${currentReferralCode}\n\nDownload the app: https://rocketreels.com/download`;
+      
+      const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+      
+      // Check if WhatsApp is installed
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        // Fallback to regular share
+        await Share.share({
+          message,
+          title: 'Join Rocket Reels',
+        });
+      }
+    } catch (error) {
+      console.error('Share WhatsApp error:', error);
+      Alert.alert('Error', 'Failed to share. Please try again.');
+    }
+  };
+
+  const onShareLink = async () => {
+    try {
+      const currentReferralCode = userProfile?.referralCode || 'N/A';
+      const message = `Join Rocket Reels and earn coins! Use my referral code: ${currentReferralCode}\n\nDownload the app: https://rocketreels.com/download`;
+      
+      await Share.share({
+        message,
+        title: 'Join Rocket Reels',
+      });
+    } catch (error) {
+      console.error('Share link error:', error);
+      Alert.alert('Error', 'Failed to share. Please try again.');
+    }
+  };
+
+  const onCopyReferralCode = async () => {
+    try {
+      const currentReferralCode = userProfile?.referralCode || 'N/A';
+      await Clipboard.setString(currentReferralCode);
+      setIsCopySuccess(true);
+      
+      // Reset copy success after 2 seconds
+      setTimeout(() => {
+        setIsCopySuccess(false);
+      }, 2000);
+      
+      Alert.alert('Success', 'Referral code copied to clipboard!');
+    } catch (error) {
+      console.error('Copy referral code error:', error);
+      Alert.alert('Error', 'Failed to copy referral code. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (user?._id) {
+      getUserProfile(user._id);
+      getUserBalance(user._id);
+    }
+  }, [user?._id]);
 
   // Handle logout
   const handleLogout = () => {
@@ -92,6 +227,9 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   // Handle menu item actions
   const handleMenuItemPress = (item: MenuItem) => {
     switch (item.name) {
+      case 'Invitation':
+        setIsInvitationModalVisible(true);
+        break;
       case 'Log out':
         handleLogout();
         break;
@@ -119,6 +257,9 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       case 'Subscription':
         navigation.navigate('Subscription');
         break;
+      case 'Tailored Content for Every Age':
+        navigation.navigate('TargetAudience');
+        break;
       case 'Privacy Policy':
       case 'Refund Policy':
       case 'Terms & Conditions':
@@ -139,9 +280,9 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
               text: 'Delete',
               style: 'destructive',
               onPress: () => {
-                // Handle account deletion
-                logout();
-                navigation.replace('Auth');
+                if (user?._id) {
+                  deleteAccount(user._id);
+                }
               },
             },
           ]
@@ -189,11 +330,17 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     );
   };
 
-  // Get user data
-  const userName = user?.userName || 'Guest';
-  const userEmail = user?.userEmail || 'No email';
-  const referralCode = 'N/A'; // UserProfile doesn't have referralCode
+  // Get user data from API or fallback to store
+  const userName = userProfile?.userName || user?.userName || 'Guest';
+  const userEmail = userProfile?.userEmail || user?.userEmail || 'No email';
+  const referralCode = userProfile?.referralCode || 'N/A';
   const firstLetter = userName?.charAt(0)?.toUpperCase() || 'G';
+  
+  // Handle balance data structure - check for coinsQuantity structure
+  const balance = balanceData?.coinsQuantity?.totalCoins || 
+                 balanceData?.balance || 
+                 balanceData?.totalCoins || 
+                 0;
 
   // Menu data with real user data
   const menuData: MenuSection[] = [
@@ -389,17 +536,17 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
                     <View key={rowIndex} style={styles.benefitsRow}>
                       {row.map((item, index) => (
                         <View key={index} style={styles.benefitItem}>
-                                                  <View style={styles.benefitIconContainer}>
-                          {item.icon === 'unlimited' ? (
-                            <MaterialCommunityIcons name="infinity" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
-                          ) : item.icon === 'hd' ? (
-                            <Icon name="hd" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
-                          ) : item.icon === 'new-ads' ? (
-                            <MaterialCommunityIcons name="block-helper" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
-                          ) : (
-                            <MaterialCommunityIcons name="account-group" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
-                          )}
-                        </View>
+                          <View style={styles.benefitIconContainer}>
+                            {item.icon === 'unlimited' ? (
+                              <MaterialCommunityIcons name="infinity" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : item.icon === 'hd' ? (
+                              <Icon name="hd" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : item.icon === 'new-ads' ? (
+                              <MaterialCommunityIcons name="block-helper" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : (
+                              <MaterialCommunityIcons name="account-group" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            )}
+                          </View>
                           <Text style={styles.benefitText}>{item.text}</Text>
                         </View>
                       ))}
@@ -417,10 +564,10 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
               <View style={styles.walletLeft}>
                 <View style={styles.walletBalance}>
                   <FontAwesome5 name="coins" size={isLargeDevice ? width * 0.03 : width * 0.05} color="#ffffff" style={styles.coinIcon} />
-                  <Text style={styles.balanceAmount}>0</Text>
+                  <Text style={styles.balanceAmount}>{balance}</Text>
                 </View>
                 <Text style={styles.walletLabel}>My Wallet</Text>
-    </View>
+              </View>
               <TouchableOpacity
                 style={styles.loadNowButton}
                 onPress={() => navigation.navigate('Refill')}
@@ -464,6 +611,73 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           </View>
         </ScrollView>
       </View>
+
+      {/* Invitation Modal */}
+      {isInvitationModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <LinearGradient
+              colors={["#A07A64", "#5E4536"]}
+              style={styles.modalGradient}
+            >
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Refer friends</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsInvitationModalVisible(false)}
+                >
+                  <Icon name="close" size={24} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Content */}
+              <View style={styles.modalContent}>
+                <Text style={styles.modalDescription}>
+                  Earn upto{' '}
+                  <Text style={styles.coinAmount}>5</Text>
+                  {' '}coins per invite.
+                </Text>
+
+                {/* WhatsApp Button */}
+                <TouchableOpacity
+                  style={[styles.shareButton, styles.whatsappButton]}
+                  onPress={onShareWhatsApp}
+                >
+                  <FontAwesome name="whatsapp" size={20} color="#ffffff" />
+                  <Text style={styles.shareButtonText}>WHATSAPP</Text>
+                </TouchableOpacity>
+
+                {/* Share Link Button */}
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={onShareLink}
+                >
+                  <Icon name="share" size={20} color="#ffffff" />
+                  <Text style={styles.shareButtonText}>SHARE LINK</Text>
+                </TouchableOpacity>
+
+                {/* Referral Code */}
+                {userProfile?.referralCode && (
+                  <TouchableOpacity
+                    style={styles.referralCodeContainer}
+                    onPress={onCopyReferralCode}
+                  >
+                    <Text style={styles.referralCodeText}>
+                      {userProfile.referralCode}
+                    </Text>
+                    <Icon 
+                      name={isCopySuccess ? "check-circle" : "content-copy"} 
+                      size={20} 
+                      color="#ffffff" 
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      )}
     </LinearGradient>
   );
 };
@@ -790,6 +1004,102 @@ const styles = StyleSheet.create({
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    width: isLargeDevice ? width * 0.5 : width * 0.9,
+    maxWidth: 400,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalGradient: {
+    padding: isLargeDevice ? width * 0.03 : width * 0.04,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
+  },
+  modalTitle: {
+    fontSize: isLargeDevice ? 24 : 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  closeButton: {
+    width: isLargeDevice ? width * 0.06 : width * 0.1,
+    height: isLargeDevice ? width * 0.06 : width * 0.1,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    gap: isLargeDevice ? width * 0.02 : width * 0.03,
+  },
+  modalDescription: {
+    fontSize: isLargeDevice ? 16 : 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  coinAmount: {
+    fontSize: isLargeDevice ? 24 : 26,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: isLargeDevice ? width * 0.02 : width * 0.03,
+    borderRadius: 12,
+    gap: isLargeDevice ? width * 0.01 : width * 0.02,
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+  },
+  shareButtonText: {
+    fontSize: isLargeDevice ? 14 : 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  referralCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: isLargeDevice ? width * 0.02 : width * 0.03,
+    borderRadius: 12,
+    marginTop: isLargeDevice ? width * 0.01 : width * 0.02,
+  },
+  referralCodeText: {
+    fontSize: isLargeDevice ? 14 : 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
   },
 });
 

@@ -2,8 +2,20 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { MMKV } from 'react-native-mmkv';
 
-// Initialize MMKV for persistent storage
-const storage = new MMKV();
+// Lazy initialization of MMKV for persistent storage
+let storageInstance: MMKV | null = null;
+
+const getStorage = (): MMKV => {
+  if (!storageInstance) {
+    try {
+      storageInstance = new MMKV();
+    } catch (error) {
+      console.warn('MMKV initialization failed in videoStore:', error);
+      throw new Error('MMKV not available - React Native may not be ready');
+    }
+  }
+  return storageInstance;
+};
 
 interface VideoState {
   id: string;
@@ -214,14 +226,14 @@ useVideoStore.subscribe(
   (videos) => {
     // Save to MMKV for persistence
     const serialized = Array.from(videos.entries());
-    storage.set('videoStates', JSON.stringify(serialized));
+    getStorage().set('videoStates', JSON.stringify(serialized));
   }
 );
 
 // Load persisted state on app start
 const loadPersistedState = () => {
   try {
-    const saved = storage.getString('videoStates');
+    const saved = getStorage().getString('videoStates');
     if (saved) {
       const parsed = JSON.parse(saved) as [string, VideoState][];
       const videos = new Map(parsed);

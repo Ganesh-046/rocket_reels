@@ -2,7 +2,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { MMKV } from 'react-native-mmkv';
 import { log } from '../utils/logger';
 
-const storage = new MMKV();
+// Lazy initialization of MMKV storage
+let storageInstance: MMKV | null = null;
+
+const getStorage = (): MMKV => {
+  if (!storageInstance) {
+    try {
+      storageInstance = new MMKV();
+    } catch (error) {
+      console.warn('MMKV initialization failed in useLocalStorage:', error);
+      throw new Error('MMKV not available - React Native may not be ready');
+    }
+  }
+  return storageInstance;
+};
 
 export function useLocalStorage<T>(
   key: string,
@@ -11,6 +24,7 @@ export function useLocalStorage<T>(
   // Get from local storage then parse stored json or return initialValue
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
+      const storage = getStorage();
       const item = storage.getString(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
@@ -26,6 +40,7 @@ export function useLocalStorage<T>(
         // Allow value to be a function so we have the same API as useState
         const valueToStore = value instanceof Function ? value(storedValue) : value;
         setStoredValue(valueToStore);
+        const storage = getStorage();
         storage.set(key, JSON.stringify(valueToStore));
         log.cacheSet(key, valueToStore);
       } catch (error) {
@@ -38,6 +53,7 @@ export function useLocalStorage<T>(
   const removeValue = useCallback(() => {
     try {
       setStoredValue(initialValue);
+      const storage = getStorage();
       storage.delete(key);
       log.cacheClear(key);
     } catch (error) {
@@ -45,14 +61,14 @@ export function useLocalStorage<T>(
     }
   }, [key, initialValue]);
 
-  // Listen for changes to this key in other tabs/windows
+  // Listen to changes in other tabs/windows
   useEffect(() => {
+    const storage = getStorage();
     const listener = storage.addOnValueChangedListener((changedKey) => {
       if (changedKey === key) {
         try {
           const item = storage.getString(key);
-          const newValue = item ? JSON.parse(item) : initialValue;
-          setStoredValue(newValue);
+          setStoredValue(item ? JSON.parse(item) : initialValue);
         } catch (error) {
           console.error(`Error reading localStorage key "${key}":`, error);
         }
@@ -71,6 +87,7 @@ export function useLocalStorage<T>(
 export const storageUtils = {
   get: <T>(key: string, defaultValue?: T): T | null => {
     try {
+      const storage = getStorage();
       const item = storage.getString(key);
       return item ? JSON.parse(item) : defaultValue || null;
     } catch (error) {
@@ -81,6 +98,7 @@ export const storageUtils = {
 
   set: <T>(key: string, value: T): void => {
     try {
+      const storage = getStorage();
       storage.set(key, JSON.stringify(value));
     } catch (error) {
       console.error(`Error setting storage key "${key}":`, error);
@@ -89,6 +107,7 @@ export const storageUtils = {
 
   remove: (key: string): void => {
     try {
+      const storage = getStorage();
       storage.delete(key);
     } catch (error) {
       console.error(`Error removing storage key "${key}":`, error);
@@ -97,6 +116,7 @@ export const storageUtils = {
 
   clear: (): void => {
     try {
+      const storage = getStorage();
       storage.clearAll();
     } catch (error) {
       console.error('Error clearing storage:', error);
@@ -105,6 +125,7 @@ export const storageUtils = {
 
   getAllKeys: (): string[] => {
     try {
+      const storage = getStorage();
       return storage.getAllKeys();
     } catch (error) {
       console.error('Error getting all keys:', error);

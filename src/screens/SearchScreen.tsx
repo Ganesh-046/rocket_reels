@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,59 +8,53 @@ import {
   FlatList,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const { width } = Dimensions.get('window');
+// API Service
+import apiService from '../services/api.service';
 
-// Dummy search results
-const dummySearchResults = [
-  {
-    id: '1',
-    title: 'Avengers: Endgame',
-    type: 'Movie',
-    year: '2019',
-    rating: '4.8',
-    image: 'https://via.placeholder.com/120x180/ed9b72/ffffff?text=AE',
-  },
-  {
-    id: '2',
-    title: 'Spider-Man: No Way Home',
-    type: 'Movie',
-    year: '2021',
-    rating: '4.7',
-    image: 'https://via.placeholder.com/120x180/7d2537/ffffff?text=SM',
-  },
-  {
-    id: '3',
-    title: 'Breaking Bad',
-    type: 'TV Show',
-    year: '2008-2013',
-    rating: '4.9',
-    image: 'https://via.placeholder.com/120x180/ed9b72/ffffff?text=BB',
-  },
-];
+// Components
+import ActivityLoader from '../components/common/ActivityLoader';
+
+const { width } = Dimensions.get('window');
 
 const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState(dummySearchResults);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     setIsSearching(true);
     
-    // Simulate search delay
-    setTimeout(() => {
-      const filtered = dummySearchResults.filter(item =>
-        item.title.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(filtered);
+    try {
+      if (query.trim().length > 0) {
+        console.log('🔍 Searching for:', query);
+        const response = await apiService.searchContent(query, { page: 1, limit: 20 });
+        console.log('🔍 Search response:', response);
+        
+        if (response.status === 200 && response.data) {
+          setSearchResults(response.data.result || []);
+          console.log('✅ Search results set:', response.data.result?.length, 'items');
+        } else {
+          console.warn('⚠️ Search response not successful:', response);
+          setSearchResults([]);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('❌ Search error:', error);
+      Alert.alert('Error', 'Failed to search. Please try again.');
+      setSearchResults([]);
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const renderSearchResult = ({ item }: { item: any }) => (
@@ -136,26 +130,30 @@ const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       {/* Search Results */}
-      <FlatList
-        data={searchResults}
-        renderItem={renderSearchResult}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.resultsContainer}
-        ListEmptyComponent={renderEmptyState}
-        ListHeaderComponent={
-          searchQuery.length > 0 && (
-            <View style={styles.resultsHeader}>
-              <Text style={styles.resultsTitle}>
-                {isSearching ? 'Searching...' : `Results for "${searchQuery}"`}
-              </Text>
-              <Text style={styles.resultsCount}>
-                {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
-              </Text>
-            </View>
-          )
-        }
-      />
+      {isSearching ? (
+        <ActivityLoader />
+      ) : (
+        <FlatList
+          data={searchResults}
+          renderItem={renderSearchResult}
+          keyExtractor={(item) => item._id || item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.resultsContainer}
+          ListEmptyComponent={renderEmptyState}
+          ListHeaderComponent={
+            searchQuery.length > 0 ? (
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsTitle}>
+                  {isSearching ? 'Searching...' : `Results for "${searchQuery}"`}
+                </Text>
+                <Text style={styles.resultsCount}>
+                  {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </LinearGradient>
   );
 };

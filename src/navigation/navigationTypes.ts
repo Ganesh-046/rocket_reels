@@ -16,6 +16,11 @@ export type RootStackParamList = {
   MyWallet: undefined;
   Refill: undefined;
   Subscription: undefined;
+  EpisodeUnlocked: {
+    title: string;
+  };
+  RewardHistory: undefined;
+  TargetAudience: undefined;
   WebView: {
     title: string;
     url: string;

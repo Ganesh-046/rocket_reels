@@ -1,48 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
   Alert,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
-const { width } = Dimensions.get('window');
+// Hooks and context
+import { useTheme } from '../../../hooks/useTheme';
+import useThemedStyles from '../../../hooks/useThemedStyles';
+import { useAuthUser } from '../../../store/auth.store';
+
+// Components
+import ActivityLoader from '../../../components/common/ActivityLoader';
+
+// API Service
+import apiService from '../../../services/api.service';
+
+const { width, height } = Dimensions.get('window');
 const isLargeDevice = width > 768;
-
-// Mock subscription plans
-const mockSubscriptionPlans = [
-  {
-    id: '1',
-    name: 'Basic',
-    price: 4.99,
-    period: 'month',
-    features: ['HD Quality', 'No Ads', 'Basic Support'],
-    popular: false,
-  },
-  {
-    id: '2',
-    name: 'Premium',
-    price: 9.99,
-    period: 'month',
-    features: ['4K Quality', 'No Ads', 'Priority Support', 'Exclusive Content'],
-    popular: true,
-  },
-  {
-    id: '3',
-    name: 'Family',
-    price: 14.99,
-    period: 'month',
-    features: ['4K Quality', 'No Ads', 'Priority Support', 'Exclusive Content', 'Up to 6 Profiles'],
-    popular: false,
-  },
-];
 
 interface NavigationProps {
   navigation: {
@@ -52,341 +36,407 @@ interface NavigationProps {
 }
 
 const SubscriptionScreen: React.FC<NavigationProps> = ({ navigation }) => {
+  const { theme: { colors } } = useTheme();
+  const style = useThemedStyles(styles);
   const insets = useSafeAreaInsets();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const user = useAuthUser();
+  
+  // State
+  const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
 
-  const handleSubscribe = (plan: any) => {
+  useEffect(() => {
+    getSubscriptionPlans();
+  }, []);
+
+  // API Functions
+  const getSubscriptionPlans = async () => {
+    try {
+      setLoading(true);
+      console.log('📋 Fetching subscription plans...');
+      const response = await apiService.getSubscriptionPlans();
+      console.log('📋 Subscription plans response:', response);
+      
+      if (response.status === 200 && response.data) {
+        setSubscriptionPlans(response.data);
+        console.log('✅ Subscription plans set:', response.data);
+      } else {
+        console.warn('⚠️ Subscription plans response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get subscription plans error:', error);
+      Alert.alert('Error', 'Failed to load subscription plans. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const purchaseSubscription = async (planId: string, paymentMethod: string) => {
+    try {
+      setPurchasing(true);
+      const purchaseData = {
+        userId: user?._id || '',
+        planId,
+        paymentMethod,
+        transactionId: `txn_${Date.now()}`,
+        amount: selectedPlan?.price || 0,
+        currency: 'INR'
+      };
+      
+      console.log('💳 Purchasing subscription:', purchaseData);
+      const response = await apiService.purchaseSubscription(purchaseData);
+      console.log('💳 Purchase response:', response);
+      
+      if (response.status === 200) {
+        Alert.alert('Success', 'Subscription purchased successfully!');
+        setShowModal(false);
+        setSelectedPlan(null);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to purchase subscription.');
+      }
+      return response;
+    } catch (error) {
+      console.error('❌ Purchase subscription error:', error);
+      Alert.alert('Error', 'Failed to purchase subscription. Please try again.');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handlePlanSelect = (plan: any) => {
+    setSelectedPlan(plan);
+    setShowModal(true);
+  };
+
+  const handlePurchase = (paymentMethod: string) => {
+    if (!selectedPlan) return;
+    
     Alert.alert(
-      'Subscription Confirmation',
-      `Are you sure you want to subscribe to ${plan.name} for $${plan.price}/${plan.period}?`,
+      'Confirm Purchase',
+      `Are you sure you want to purchase ${selectedPlan.name} for ₹${selectedPlan.price}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Subscribe',
-          onPress: () => {
-            Alert.alert('Success', 'Subscription activated successfully!');
-            navigation.goBack();
-          },
-        },
+          text: 'Purchase',
+          onPress: () => purchaseSubscription(selectedPlan._id, paymentMethod)
+        }
       ]
     );
   };
 
-  const renderPlanCard = (plan: any) => (
+  const renderHeader = () => (
+    <View style={style.header}>
+      <TouchableOpacity
+        style={style.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Icon name="arrow-back" size={isLargeDevice ? width * 0.03 : width * 0.05} color="#ffffff" />
+      </TouchableOpacity>
+      <Text style={style.headerTitle}>Subscription Plans</Text>
+      <View style={style.headerSpacer} />
+    </View>
+  );
+
+  const renderPlanCard = (plan: any, index: number) => (
     <TouchableOpacity
-      key={plan.id}
-      style={[
-        styles.planCard,
-        selectedPlan === plan.id && styles.selectedPlan,
-        plan.popular && styles.popularPlan,
-      ]}
-      onPress={() => setSelectedPlan(plan.id)}
+      key={plan._id}
+      style={[style.planCard, plan.isPopular && style.popularPlan]}
+      onPress={() => handlePlanSelect(plan)}
     >
-      {plan.popular && (
-        <View style={styles.popularBadge}>
-          <Text style={styles.popularText}>MOST POPULAR</Text>
-        </View>
-      )}
-      <View style={styles.planHeader}>
-        <Text style={styles.planName}>{plan.name}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceSymbol}>$</Text>
-          <Text style={styles.priceAmount}>{plan.price}</Text>
-          <Text style={styles.pricePeriod}>/{plan.period}</Text>
-        </View>
-      </View>
-      <View style={styles.featuresList}>
-        {plan.features.map((feature: string, index: number) => (
-          <View key={index} style={styles.featureItem}>
-            <Icon name="check-circle" size={16} color="#4CAF50" />
-            <Text style={styles.featureText}>{feature}</Text>
+      <LinearGradient
+        colors={plan.isPopular ? ['#E9743A', '#CB2D4D'] : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+        style={style.planGradient}
+      >
+        {plan.isPopular && (
+          <View style={style.popularBadge}>
+            <Text style={style.popularText}>MOST POPULAR</Text>
           </View>
-        ))}
-      </View>
+        )}
+        
+        <View style={style.planHeader}>
+          <Text style={style.planName}>{plan.name}</Text>
+          <Text style={style.planPrice}>₹{plan.price}</Text>
+          <Text style={style.planDuration}>{plan.duration}</Text>
+        </View>
+        
+        <View style={style.planFeatures}>
+          {plan.features?.map((feature: string, featureIndex: number) => (
+            <View key={featureIndex} style={style.featureItem}>
+              <Icon name="check-circle" size={16} color="#4CAF50" />
+              <Text style={style.featureText}>{feature}</Text>
+            </View>
+          ))}
+        </View>
+        
+        <TouchableOpacity
+          style={style.selectButton}
+          onPress={() => handlePlanSelect(plan)}
+        >
+          <Text style={style.selectButtonText}>Select Plan</Text>
+        </TouchableOpacity>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
-  return (
-    <LinearGradient
-      colors={['#ed9b72', '#7d2537']}
-      style={styles.container}
+  const renderPurchaseModal = () => (
+    <Modal
+      visible={showModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowModal(false)}
     >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>VIP Membership</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <MaterialCommunityIcons name="crown" size={48} color="#FFD700" />
-          <Text style={styles.heroTitle}>Unlock Premium Experience</Text>
-          <Text style={styles.heroSubtitle}>
-            Enjoy unlimited access to premium content with no interruptions
-          </Text>
-        </View>
-
-        {/* Plans */}
-        <View style={styles.plansContainer}>
-          <Text style={styles.sectionTitle}>Choose Your Plan</Text>
-          {mockSubscriptionPlans.map(renderPlanCard)}
-        </View>
-
-        {/* Subscribe Button */}
-        {selectedPlan && (
-          <View style={styles.subscribeContainer}>
+      <View style={style.modalOverlay}>
+        <View style={style.modalContent}>
+          <View style={style.modalHeader}>
+            <Text style={style.modalTitle}>Choose Payment Method</Text>
             <TouchableOpacity
-              style={styles.subscribeButton}
-              onPress={() => {
-                const plan = mockSubscriptionPlans.find(p => p.id === selectedPlan);
-                if (plan) handleSubscribe(plan);
-              }}
+              style={style.closeButton}
+              onPress={() => setShowModal(false)}
             >
-              <LinearGradient
-                colors={['#E9743A', '#CB2D4D']}
-                style={styles.subscribeGradient}
-              >
-                <MaterialCommunityIcons name="crown" size={20} color="#ffffff" />
-                <Text style={styles.subscribeText}>Subscribe Now</Text>
-              </LinearGradient>
+              <Icon name="close" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
-        )}
-
-        {/* Benefits */}
-        <View style={styles.benefitsContainer}>
-          <Text style={styles.sectionTitle}>VIP Benefits</Text>
-          <View style={styles.benefitsGrid}>
-            <View style={styles.benefitCard}>
-              <MaterialCommunityIcons name="infinity" size={32} color="#E9743A" />
-              <Text style={styles.benefitTitle}>Unlimited Viewing</Text>
-              <Text style={styles.benefitDesc}>Watch as much as you want</Text>
-            </View>
-            <View style={styles.benefitCard}>
-              <Icon name="hd" size={32} color="#E9743A" />
-              <Text style={styles.benefitTitle}>HD Quality</Text>
-              <Text style={styles.benefitDesc}>Crystal clear video quality</Text>
-            </View>
-            <View style={styles.benefitCard}>
-              <MaterialCommunityIcons name="block-helper" size={32} color="#E9743A" />
-              <Text style={styles.benefitTitle}>Ad Free</Text>
-              <Text style={styles.benefitDesc}>No interruptions</Text>
-            </View>
-            <View style={styles.benefitCard}>
-              <MaterialCommunityIcons name="account-group" size={32} color="#E9743A" />
-              <Text style={styles.benefitTitle}>VIP Community</Text>
-              <Text style={styles.benefitDesc}>Exclusive member benefits</Text>
-            </View>
+          
+          <View style={style.paymentMethods}>
+            <TouchableOpacity
+              style={style.paymentMethod}
+              onPress={() => handlePurchase('apple_pay')}
+              disabled={purchasing}
+            >
+              <FontAwesome5 name="apple-pay" size={24} color="#000000" />
+              <Text style={style.paymentText}>Apple Pay</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={style.paymentMethod}
+              onPress={() => handlePurchase('google_pay')}
+              disabled={purchasing}
+            >
+              <FontAwesome5 name="google-pay" size={24} color="#000000" />
+              <Text style={style.paymentText}>Google Pay</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={style.paymentMethod}
+              onPress={() => handlePurchase('card')}
+              disabled={purchasing}
+            >
+              <Icon name="credit-card" size={24} color="#000000" />
+              <Text style={style.paymentText}>Credit/Debit Card</Text>
+            </TouchableOpacity>
           </View>
+          
+          {purchasing && (
+            <View style={style.loadingContainer}>
+              <ActivityLoader loaderColor={colors.PRIMARYWHITE} />
+              <Text style={style.loadingText}>Processing payment...</Text>
+            </View>
+          )}
         </View>
+      </View>
+    </Modal>
+  );
 
-        {/* Terms */}
-        <View style={styles.termsContainer}>
-          <Text style={styles.termsText}>
-            By subscribing, you agree to our Terms of Service and Privacy Policy. 
-            Subscription will auto-renew unless cancelled.
-          </Text>
+  return (
+    <LinearGradient 
+      start={{ x: 0, y: 0 }} 
+      end={{ x: 1, y: 1 }} 
+      colors={['#ed9b72', '#7d2537']}
+      style={[style.container, { paddingTop: insets.top }]}
+    >
+      {renderHeader()}
+      
+      {loading ? (
+        <View style={style.loadingContainer}>
+          <ActivityLoader loaderColor={colors.PRIMARYWHITE} />
         </View>
-      </ScrollView>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={style.scrollContainer}
+        >
+          <View style={style.plansContainer}>
+            {subscriptionPlans.map((plan, index) => renderPlanCard(plan, index))}
+          </View>
+        </ScrollView>
+      )}
+      
+      {renderPurchaseModal()}
     </LinearGradient>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = (theme: any, isLargeDevice: boolean, width: number, height: number, columns: number, appFonts: any) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.TRANSPARENT,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingVertical: isLargeDevice ? width * 0.015 : width * 0.03,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: isLargeDevice ? width * 0.08 : width * 0.12,
+    height: isLargeDevice ? width * 0.08 : width * 0.12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
     flex: 1,
+    fontSize: isLargeDevice ? 18 : 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
     textAlign: 'center',
+    marginHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   headerSpacer: {
-    width: 40,
+    width: isLargeDevice ? width * 0.08 : width * 0.12,
   },
-  heroSection: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
   },
-  heroTitle: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
+  scrollContainer: {
+    paddingHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingBottom: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   plansContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    gap: isLargeDevice ? width * 0.02 : width * 0.03,
   },
   planCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    position: 'relative',
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  selectedPlan: {
-    backgroundColor: 'rgba(233, 116, 58, 0.3)',
+  popularPlan: {
     borderWidth: 2,
     borderColor: '#E9743A',
   },
-  popularPlan: {
-    backgroundColor: 'rgba(233, 116, 58, 0.2)',
+  planGradient: {
+    padding: isLargeDevice ? width * 0.025 : width * 0.04,
+    position: 'relative',
   },
   popularBadge: {
     position: 'absolute',
-    top: -12,
-    left: 20,
+    top: isLargeDevice ? width * 0.015 : width * 0.02,
+    right: isLargeDevice ? width * 0.015 : width * 0.02,
     backgroundColor: '#E9743A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isLargeDevice ? width * 0.015 : width * 0.02,
+    paddingVertical: isLargeDevice ? width * 0.008 : width * 0.012,
     borderRadius: 12,
   },
   popularText: {
-    color: '#ffffff',
-    fontSize: 12,
+    fontSize: isLargeDevice ? 10 : 12,
     fontWeight: 'bold',
+    color: '#ffffff',
   },
   planHeader: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
   },
   planName: {
+    fontSize: isLargeDevice ? 20 : 24,
+    fontWeight: 'bold',
     color: '#ffffff',
-    fontSize: 24,
+    marginBottom: isLargeDevice ? width * 0.01 : width * 0.015,
+  },
+  planPrice: {
+    fontSize: isLargeDevice ? 32 : 36,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#FFD700',
+    marginBottom: isLargeDevice ? width * 0.005 : width * 0.01,
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  planDuration: {
+    fontSize: isLargeDevice ? 14 : 16,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  priceSymbol: {
-    color: '#E9743A',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  priceAmount: {
-    color: '#E9743A',
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  pricePeriod: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
-    marginLeft: 4,
-  },
-  featuresList: {
-    gap: 8,
+  planFeatures: {
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: isLargeDevice ? width * 0.01 : width * 0.015,
   },
   featureText: {
+    fontSize: isLargeDevice ? 14 : 16,
     color: '#ffffff',
-    fontSize: 14,
-    marginLeft: 8,
+    marginLeft: isLargeDevice ? width * 0.01 : width * 0.015,
+    flex: 1,
   },
-  subscribeContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  subscribeButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-  },
-  subscribeGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-  },
-  subscribeText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  benefitsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  benefitsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  benefitCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  selectButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: isLargeDevice ? width * 0.015 : width * 0.02,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    width: isLargeDevice ? '48%' : '48%',
     alignItems: 'center',
   },
-  benefitTitle: {
-    color: '#ffffff',
-    fontSize: 14,
+  selectButtonText: {
+    fontSize: isLargeDevice ? 16 : 18,
     fontWeight: 'bold',
-    marginTop: 8,
-    marginBottom: 4,
-    textAlign: 'center',
+    color: '#ffffff',
   },
-  benefitDesc: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-    textAlign: 'center',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  termsContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: isLargeDevice ? width * 0.03 : width * 0.04,
+    width: isLargeDevice ? width * 0.6 : width * 0.9,
+    maxHeight: height * 0.7,
   },
-  termsText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
+  },
+  modalTitle: {
+    fontSize: isLargeDevice ? 18 : 20,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  closeButton: {
+    padding: isLargeDevice ? width * 0.01 : width * 0.015,
+  },
+  paymentMethods: {
+    gap: isLargeDevice ? width * 0.015 : width * 0.02,
+  },
+  paymentMethod: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: isLargeDevice ? width * 0.02 : width * 0.025,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  paymentText: {
+    fontSize: isLargeDevice ? 16 : 18,
+    color: '#333333',
+    marginLeft: isLargeDevice ? width * 0.015 : width * 0.02,
+    fontWeight: '500',
+  },
+  loadingText: {
+    fontSize: isLargeDevice ? 14 : 16,
+    color: '#666666',
+    marginTop: isLargeDevice ? width * 0.01 : width * 0.015,
   },
 });
 

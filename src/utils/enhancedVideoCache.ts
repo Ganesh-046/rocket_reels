@@ -2,8 +2,20 @@ import RNFS from 'react-native-fs';
 import { MMKV } from 'react-native-mmkv';
 import { Platform } from 'react-native';
 
-// Initialize MMKV for cache metadata
-const cacheStorage = new MMKV();
+// Lazy initialization of MMKV for cache metadata
+let cacheStorageInstance: MMKV | null = null;
+
+const getCacheStorage = (): MMKV => {
+  if (!cacheStorageInstance) {
+    try {
+      cacheStorageInstance = new MMKV();
+    } catch (error) {
+      console.warn('MMKV initialization failed in enhancedVideoCache:', error);
+      throw new Error('MMKV not available - React Native may not be ready');
+    }
+  }
+  return cacheStorageInstance;
+};
 
 interface CacheMetadata {
   id: string;
@@ -65,6 +77,7 @@ class EnhancedVideoCache {
 
   private loadMetadata() {
     try {
+      const cacheStorage = getCacheStorage();
       const saved = cacheStorage.getString('videoCacheMetadata');
       if (saved) {
         const parsed = JSON.parse(saved) as [string, CacheMetadata][];
@@ -77,6 +90,7 @@ class EnhancedVideoCache {
 
   private saveMetadata() {
     try {
+      const cacheStorage = getCacheStorage();
       const serialized = JSON.stringify(Array.from(this.metadata.entries()));
       cacheStorage.set('videoCacheMetadata', serialized);
     } catch (error) {
@@ -87,6 +101,7 @@ class EnhancedVideoCache {
     await this.initCache();
 
     try {
+      const cacheStorage = getCacheStorage();
       const metadata = this.metadata.get(videoId);
       if (!metadata) return null;
 
@@ -235,6 +250,7 @@ class EnhancedVideoCache {
 
   async getCacheSize(): Promise<number> {
     try {
+      const cacheStorage = getCacheStorage();
       const entries = Array.from(this.metadata.values());
       return entries.reduce((total, metadata) => total + metadata.size, 0);
     } catch (error) {
@@ -249,6 +265,7 @@ class EnhancedVideoCache {
     mostAccessed: string | null;
   }> {
     try {
+      const cacheStorage = getCacheStorage();
       const entries = Array.from(this.metadata.entries());
       const totalSize = await this.getCacheSize();
       
@@ -288,6 +305,7 @@ class EnhancedVideoCache {
   async clearCache(): Promise<void> {
     try {
       // Remove all cached files
+      const cacheStorage = getCacheStorage();
       const entries = Array.from(this.metadata.values());
       const deletePromises = entries.map(async (metadata) => {
         try {
@@ -308,6 +326,7 @@ class EnhancedVideoCache {
 
   async removeVideo(videoId: string): Promise<void> {
     try {
+      const cacheStorage = getCacheStorage();
       const metadata = this.metadata.get(videoId);
       if (metadata) {
         await RNFS.unlink(metadata.path);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,65 +7,21 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
+// API Service
+import apiService from '../../../services/api.service';
+import { useAuthUser } from '../../../store/auth.store';
+
+// Components
+import ActivityLoader from '../../../components/common/ActivityLoader';
+
 const { width } = Dimensions.get('window');
 const isLargeDevice = width > 768;
-
-// Mock data for watchlist
-const mockWatchlistData = [
-  {
-    id: '1',
-    title: 'Epic Adventure Series',
-    thumbnail: 'https://picsum.photos/300/200?random=10',
-    duration: '2:15:30',
-    views: '1.2M',
-    isLiked: true,
-  },
-  {
-    id: '2',
-    title: 'Mystery Detective',
-    thumbnail: 'https://picsum.photos/300/200?random=11',
-    duration: '1:45:20',
-    views: '890K',
-    isLiked: true,
-  },
-  {
-    id: '3',
-    title: 'Comedy Central',
-    thumbnail: 'https://picsum.photos/300/200?random=12',
-    duration: '1:20:15',
-    views: '2.1M',
-    isLiked: true,
-  },
-  {
-    id: '4',
-    title: 'Action Heroes',
-    thumbnail: 'https://picsum.photos/300/200?random=13',
-    duration: '2:30:45',
-    views: '1.5M',
-    isLiked: true,
-  },
-  {
-    id: '5',
-    title: 'Romance Stories',
-    thumbnail: 'https://picsum.photos/300/200?random=14',
-    duration: '1:55:10',
-    views: '750K',
-    isLiked: true,
-  },
-  {
-    id: '6',
-    title: 'Sci-Fi Universe',
-    thumbnail: 'https://picsum.photos/300/200?random=15',
-    duration: '2:10:30',
-    views: '1.8M',
-    isLiked: true,
-  },
-];
 
 interface NavigationProps {
   navigation: {
@@ -76,6 +32,39 @@ interface NavigationProps {
 
 const MyListScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const user = useAuthUser();
+  
+  // State
+  const [watchlistData, setWatchlistData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?._id) {
+      getWatchlist();
+    }
+  }, [user?._id]);
+
+  // API Functions
+  const getWatchlist = async () => {
+    try {
+      setLoading(true);
+      console.log('📋 Fetching watchlist for:', user?._id);
+      const response = await apiService.getWatchlist(user?._id || '');
+      console.log('📋 Watchlist response:', response);
+      
+      if (response.status === 200 && response.data) {
+        setWatchlistData(response.data);
+        console.log('✅ Watchlist set:', response.data);
+      } else {
+        console.warn('⚠️ Watchlist response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get watchlist error:', error);
+      Alert.alert('Error', 'Failed to load watchlist. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderWatchlistItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -143,16 +132,20 @@ const MyListScreen: React.FC<NavigationProps> = ({ navigation }) => {
       </View>
 
       {/* Content */}
-      <FlatList
-        data={mockWatchlistData}
-        renderItem={renderWatchlistItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={EmptyState}
-        numColumns={isLargeDevice ? 2 : 1}
-        columnWrapperStyle={isLargeDevice ? styles.row : undefined}
-      />
+      {loading ? (
+        <ActivityLoader />
+      ) : (
+        <FlatList
+          data={watchlistData}
+          renderItem={renderWatchlistItem}
+          keyExtractor={(item) => item._id || item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={EmptyState}
+          numColumns={isLargeDevice ? 2 : 1}
+          columnWrapperStyle={isLargeDevice ? styles.row : undefined}
+        />
+      )}
     </LinearGradient>
   );
 };

@@ -2,6 +2,21 @@ import RNFS from 'react-native-fs';
 import { MMKV } from 'react-native-mmkv';
 import { Platform } from 'react-native';
 
+// Lazy initialization of MMKV for cache metadata
+let cacheStorageInstance: MMKV | null = null;
+
+const getCacheStorage = (): MMKV => {
+  if (!cacheStorageInstance) {
+    try {
+      cacheStorageInstance = new MMKV();
+    } catch (error) {
+      console.warn('MMKV initialization failed in instagramOptimizedVideoCache:', error);
+      throw new Error('MMKV not available - React Native may not be ready');
+    }
+  }
+  return cacheStorageInstance;
+};
+
 // Instagram-style cache configuration
 const INSTAGRAM_CACHE_CONFIG = {
   maxSize: 100 * 1024 * 1024, // Reduced to 100MB for better performance
@@ -31,7 +46,7 @@ class InstagramOptimizedVideoCache {
   private activeDownloads: Set<string> = new Set();
   private downloadQueue: Array<{ id: string; url: string; priority: number }> = [];
   private isProcessingQueue = false;
-  private cacheStorage = new MMKV();
+  private cacheStorage = getCacheStorage;
 
   constructor() {
     this.cacheDir = `${RNFS.CachesDirectoryPath}/instagram_videos`;
@@ -216,7 +231,7 @@ class InstagramOptimizedVideoCache {
 
   private loadMetadata() {
     try {
-      const saved = this.cacheStorage.getString('instagramVideoMetadata');
+      const saved = this.cacheStorage().getString('instagramVideoMetadata');
       if (saved) {
         const parsed = JSON.parse(saved) as [string, InstagramVideoMetadata][];
         this.metadata = new Map(parsed);
@@ -229,7 +244,7 @@ class InstagramOptimizedVideoCache {
   private saveMetadata() {
     try {
       const serialized = JSON.stringify(Array.from(this.metadata.entries()));
-      this.cacheStorage.set('instagramVideoMetadata', serialized);
+      this.cacheStorage().set('instagramVideoMetadata', serialized);
     } catch (error) {
     }
   }

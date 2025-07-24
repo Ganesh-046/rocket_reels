@@ -81,9 +81,9 @@ export const ENDPOINTS = {
 
   // Subscription
   SUBSCRIPTION: {
-    PLANS: '/subscription/plan/list',
+    PLANS: '/rewards/subscription/subscriptionList',
     CREATE_ORDER: '/subscription/payment/createOrder',
-    PURCHASE: '/confirm-payment/plan-purchase',
+    PURCHASE: '/rewards/confirm-payment/plan-purchase',
     VIP_SUBSCRIPTIONS: '/rewards/subscription/subscriptionlist',
   },
 

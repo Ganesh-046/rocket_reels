@@ -20,6 +20,9 @@ import TransactionScreen from '../features/profile/screens/TransactionScreen';
 import MyWalletScreen from '../features/profile/screens/MyWalletScreen';
 import RefillScreen from '../features/profile/screens/RefillScreen';
 import SubscriptionScreen from '../features/profile/screens/SubscriptionScreen';
+import EpisodeUnlockedScreen from '../features/profile/screens/EpisodeUnlockedScreen';
+import RewardHistoryScreen from '../features/profile/screens/RewardHistoryScreen';
+import TargetAudienceScreen from '../features/profile/screens/TargetAudienceScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -54,6 +57,9 @@ export default function BottomTabNavigator() {
       <Stack.Screen name="MyWallet" component={MyWalletScreen} />
       <Stack.Screen name="Refill" component={RefillScreen} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="EpisodeUnlocked" component={EpisodeUnlockedScreen} />
+      <Stack.Screen name="RewardHistory" component={RewardHistoryScreen} />
+      <Stack.Screen name="TargetAudience" component={TargetAudienceScreen} />
       <Stack.Screen name="WebView" component={WebViewScreen} />
     </Stack.Navigator>
   );

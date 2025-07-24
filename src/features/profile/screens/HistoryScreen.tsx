@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,65 +7,21 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
+// API Service
+import apiService from '../../../services/api.service';
+import { useAuthUser } from '../../../store/auth.store';
+
+// Components
+import ActivityLoader from '../../../components/common/ActivityLoader';
+
 const { width } = Dimensions.get('window');
 const isLargeDevice = width > 768;
-
-// Mock data for history
-const mockHistoryData = [
-  {
-    id: '1',
-    title: 'Amazing Adventure',
-    thumbnail: 'https://picsum.photos/300/200?random=1',
-    duration: '2:15:30',
-    views: '1.2M',
-    progress: 0.7,
-  },
-  {
-    id: '2',
-    title: 'Mystery Thriller',
-    thumbnail: 'https://picsum.photos/300/200?random=2',
-    duration: '1:45:20',
-    views: '890K',
-    progress: 0.3,
-  },
-  {
-    id: '3',
-    title: 'Comedy Special',
-    thumbnail: 'https://picsum.photos/300/200?random=3',
-    duration: '1:20:15',
-    views: '2.1M',
-    progress: 0.9,
-  },
-  {
-    id: '4',
-    title: 'Action Packed',
-    thumbnail: 'https://picsum.photos/300/200?random=4',
-    duration: '2:30:45',
-    views: '1.5M',
-    progress: 0.5,
-  },
-  {
-    id: '5',
-    title: 'Romantic Drama',
-    thumbnail: 'https://picsum.photos/300/200?random=5',
-    duration: '1:55:10',
-    views: '750K',
-    progress: 0.2,
-  },
-  {
-    id: '6',
-    title: 'Sci-Fi Adventure',
-    thumbnail: 'https://picsum.photos/300/200?random=6',
-    duration: '2:10:30',
-    views: '1.8M',
-    progress: 0.6,
-  },
-];
 
 interface NavigationProps {
   navigation: {
@@ -76,6 +32,48 @@ interface NavigationProps {
 
 const HistoryScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const user = useAuthUser();
+  
+  // State
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?._id) {
+      getWatchHistory();
+    }
+  }, [user?._id]);
+
+  // API Functions
+  const getWatchHistory = async () => {
+    try {
+      setLoading(true);
+      console.log('📺 Fetching watch history for:', user?._id);
+      // Note: This might need to be adjusted based on your API structure
+      // The current API might not have a direct watch history endpoint
+      // You might need to get content list and filter by watched status
+      const response = await apiService.getContentList({ 
+        page: 1, 
+        limit: 20,
+        // Add any filters for watched content if available
+      });
+      console.log('📺 Watch history response:', response);
+      
+      if (response.status === 200 && response.data) {
+        // Filter for watched content or use a different approach
+        // This is a placeholder - adjust based on your API structure
+        setHistoryData(response.data.result || []);
+        console.log('✅ Watch history set:', response.data.result);
+      } else {
+        console.warn('⚠️ Watch history response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get watch history error:', error);
+      Alert.alert('Error', 'Failed to load watch history. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderHistoryItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -133,16 +131,20 @@ const HistoryScreen: React.FC<NavigationProps> = ({ navigation }) => {
       </View>
 
       {/* Content */}
-      <FlatList
-        data={mockHistoryData}
-        renderItem={renderHistoryItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={EmptyState}
-        numColumns={isLargeDevice ? 2 : 1}
-        columnWrapperStyle={isLargeDevice ? styles.row : undefined}
-      />
+      {loading ? (
+        <ActivityLoader />
+      ) : (
+        <FlatList
+          data={historyData}
+          renderItem={renderHistoryItem}
+          keyExtractor={(item) => item._id || item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={EmptyState}
+          numColumns={isLargeDevice ? 2 : 1}
+          columnWrapperStyle={isLargeDevice ? styles.row : undefined}
+        />
+      )}
     </LinearGradient>
   );
 };

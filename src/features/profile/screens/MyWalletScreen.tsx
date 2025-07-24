@@ -1,31 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
-const { width } = Dimensions.get('window');
-const isLargeDevice = width > 768;
+// Hooks and context
+import { useTheme } from '../../../hooks/useTheme';
+import useThemedStyles from '../../../hooks/useThemedStyles';
+import { useAuthUser } from '../../../store/auth.store';
 
-// Mock wallet data
-const mockWalletData = {
-  balance: 1250,
-  totalEarned: 2500,
-  totalSpent: 1250,
-  recentTransactions: [
-    { id: '1', type: 'earned', amount: 50, description: 'Daily Check-in', date: 'Today' },
-    { id: '2', type: 'spent', amount: 20, description: 'Episode Unlock', date: 'Yesterday' },
-    { id: '3', type: 'earned', amount: 100, description: 'Referral Bonus', date: '2 days ago' },
-  ]
-};
+// Components
+import ActivityLoader from '../../../components/common/ActivityLoader';
+
+// API Service
+import apiService from '../../../services/api.service';
+
+const { width, height } = Dimensions.get('window');
+const isLargeDevice = width > 768;
 
 interface NavigationProps {
   navigation: {
@@ -35,304 +35,372 @@ interface NavigationProps {
 }
 
 const MyWalletScreen: React.FC<NavigationProps> = ({ navigation }) => {
+  const { theme: { colors } } = useTheme();
+  const style = useThemedStyles(styles);
   const insets = useSafeAreaInsets();
+  const user = useAuthUser();
+  
+  // State
+  const [balanceData, setBalanceData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  const renderTransactionItem = (item: any) => (
-    <View key={item.id} style={styles.transactionItem}>
-      <View style={styles.transactionIcon}>
-        <Icon 
-          name={item.type === 'earned' ? 'add-circle' : 'remove-circle'} 
-          size={20} 
-          color={item.type === 'earned' ? '#4CAF50' : '#F44336'} 
-        />
+  useEffect(() => {
+    if (user?._id) {
+      getUserBalance();
+    }
+  }, [user?._id]);
+
+  // API Functions
+  const getUserBalance = async () => {
+    try {
+      setLoading(true);
+      console.log('💰 Fetching wallet balance for:', user?._id);
+      const response = await apiService.getBalance(user?._id || '');
+      console.log('💳 Wallet balance response:', response);
+      
+      if (response.status === 200 && response.data) {
+        setBalanceData(response.data);
+        console.log('✅ Wallet balance set:', response.data);
+      } else {
+        console.warn('⚠️ Wallet balance response not successful:', response);
+      }
+    } catch (error) {
+      console.error('❌ Get balance error:', error);
+      Alert.alert('Error', 'Failed to load wallet balance. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderHeader = () => (
+    <View style={style.header}>
+      <TouchableOpacity
+        style={style.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Icon name="arrow-back" size={isLargeDevice ? width * 0.03 : width * 0.05} color="#ffffff" />
+      </TouchableOpacity>
+      <Text style={style.headerTitle}>My Wallet</Text>
+      <View style={style.headerSpacer} />
+    </View>
+  );
+
+  const renderBalanceCard = () => (
+    <View style={style.balanceCard}>
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+        style={style.balanceGradient}
+      >
+        <View style={style.balanceHeader}>
+          <View style={style.balanceInfo}>
+            <FontAwesome5 name="coins" size={isLargeDevice ? width * 0.04 : width * 0.06} color="#FFD700" />
+            <Text style={style.balanceLabel}>Current Balance</Text>
+          </View>
+          <TouchableOpacity
+            style={style.refreshButton}
+            onPress={getUserBalance}
+          >
+            <Icon name="refresh" size={isLargeDevice ? width * 0.025 : width * 0.035} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={style.balanceAmount}>
+          {balanceData?.coinsQuantity?.totalCoins || 
+           balanceData?.balance || 
+           balanceData?.totalCoins || 
+           0}
+        </Text>
+        
+        <Text style={style.balanceCurrency}>Coins</Text>
+      </LinearGradient>
+    </View>
+  );
+
+  const renderQuickActions = () => (
+    <View style={style.quickActionsContainer}>
+      <Text style={style.sectionTitle}>Quick Actions</Text>
+      
+      <View style={style.actionsGrid}>
+        <TouchableOpacity
+          style={style.actionCard}
+          onPress={() => navigation.navigate('Refill')}
+        >
+          <LinearGradient
+            colors={['#E9743A', '#CB2D4D']}
+            style={style.actionGradient}
+          >
+            <FontAwesome5 name="diamond-stone" size={isLargeDevice ? width * 0.04 : width * 0.06} color="#ffffff" />
+            <Text style={style.actionTitle}>Recharge</Text>
+            <Text style={style.actionSubtitle}>Add more coins</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={style.actionCard}
+          onPress={() => navigation.navigate('Transaction')}
+        >
+          <LinearGradient
+            colors={['#4CAF50', '#45A049']}
+            style={style.actionGradient}
+          >
+            <Icon name="receipt" size={isLargeDevice ? width * 0.04 : width * 0.06} color="#ffffff" />
+            <Text style={style.actionTitle}>History</Text>
+            <Text style={style.actionSubtitle}>View transactions</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={style.actionCard}
+          onPress={() => navigation.navigate('RewardHistory')}
+        >
+          <LinearGradient
+            colors={['#2196F3', '#1976D2']}
+            style={style.actionGradient}
+          >
+            <FontAwesome5 name="gift" size={isLargeDevice ? width * 0.04 : width * 0.06} color="#ffffff" />
+            <Text style={style.actionTitle}>Rewards</Text>
+            <Text style={style.actionSubtitle}>Earn coins</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={style.actionCard}
+          onPress={() => navigation.navigate('Subscription')}
+        >
+          <LinearGradient
+            colors={['#9C27B0', '#7B1FA2']}
+            style={style.actionGradient}
+          >
+            <Icon name="star" size={isLargeDevice ? width * 0.04 : width * 0.06} color="#ffffff" />
+            <Text style={style.actionTitle}>VIP</Text>
+            <Text style={style.actionSubtitle}>Premium plans</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
-      <View style={styles.transactionInfo}>
-        <Text style={styles.transactionDescription}>{item.description}</Text>
-        <Text style={styles.transactionDate}>{item.date}</Text>
+    </View>
+  );
+
+  const renderStats = () => (
+    <View style={style.statsContainer}>
+      <Text style={style.sectionTitle}>Statistics</Text>
+      
+      <View style={style.statsGrid}>
+        <View style={style.statCard}>
+          <Text style={style.statNumber}>
+            {balanceData?.totalEarned || 0}
+          </Text>
+          <Text style={style.statLabel}>Total Earned</Text>
+        </View>
+        
+        <View style={style.statCard}>
+          <Text style={style.statNumber}>
+            {balanceData?.totalSpent || 0}
+          </Text>
+          <Text style={style.statLabel}>Total Spent</Text>
+        </View>
+        
+        <View style={style.statCard}>
+          <Text style={style.statNumber}>
+            {balanceData?.rechargeCount || 0}
+          </Text>
+          <Text style={style.statLabel}>Recharges</Text>
+        </View>
+        
+        <View style={style.statCard}>
+          <Text style={style.statNumber}>
+            {balanceData?.rewardCount || 0}
+          </Text>
+          <Text style={style.statLabel}>Rewards</Text>
+        </View>
       </View>
-      <Text style={[
-        styles.transactionAmount, 
-        { color: item.type === 'earned' ? '#4CAF50' : '#F44336' }
-      ]}>
-        {item.type === 'earned' ? '+' : '-'}{item.amount}
-      </Text>
     </View>
   );
 
   return (
-    <LinearGradient
+    <LinearGradient 
+      start={{ x: 0, y: 0 }} 
+      end={{ x: 1, y: 1 }} 
       colors={['#ed9b72', '#7d2537']}
-      style={styles.container}
+      style={[style.container, { paddingTop: insets.top }]}
     >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+      {renderHeader()}
+      
+      {loading ? (
+        <View style={style.loadingContainer}>
+          <ActivityLoader loaderColor={colors.PRIMARYWHITE} />
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={style.scrollContainer}
         >
-          <Icon name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Wallet</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Balance Card */}
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceHeader}>
-            <FontAwesome5 name="coins" size={32} color="#ffffff" />
-            <Text style={styles.balanceTitle}>Current Balance</Text>
-          </View>
-          <Text style={styles.balanceAmount}>{mockWalletData.balance}</Text>
-          <Text style={styles.balanceLabel}>coins</Text>
-        </View>
-
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Icon name="trending-up" size={24} color="#4CAF50" />
-            <Text style={styles.statAmount}>{mockWalletData.totalEarned}</Text>
-            <Text style={styles.statLabel}>Total Earned</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon name="trending-down" size={24} color="#F44336" />
-            <Text style={styles.statAmount}>{mockWalletData.totalSpent}</Text>
-            <Text style={styles.statLabel}>Total Spent</Text>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.actionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Refill')}
-            >
-              <LinearGradient
-                colors={['#E9743A', '#CB2D4D']}
-                style={styles.actionGradient}
-              >
-                <FontAwesome5 name="diamond-stone" size={24} color="#ffffff" />
-                <Text style={styles.actionText}>Load Coins</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Transaction')}
-            >
-              <View style={styles.actionButtonSecondary}>
-                <Icon name="receipt-long" size={24} color="#ffffff" />
-                <Text style={styles.actionText}>History</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Recent Transactions */}
-        <View style={styles.transactionsContainer}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          {mockWalletData.recentTransactions.map(renderTransactionItem)}
-        </View>
-
-        {/* How to Earn */}
-        <View style={styles.earnContainer}>
-          <Text style={styles.sectionTitle}>How to Earn Coins</Text>
-          <View style={styles.earnMethods}>
-            <View style={styles.earnMethod}>
-              <Icon name="schedule" size={20} color="#E9743A" />
-              <Text style={styles.earnText}>Daily Check-in</Text>
-            </View>
-            <View style={styles.earnMethod}>
-              <Icon name="people" size={20} color="#E9743A" />
-              <Text style={styles.earnText}>Refer Friends</Text>
-            </View>
-            <View style={styles.earnMethod}>
-              <Icon name="play-circle" size={20} color="#E9743A" />
-              <Text style={styles.earnText}>Watch Ads</Text>
-            </View>
-            <View style={styles.earnMethod}>
-              <Icon name="card-giftcard" size={20} color="#E9743A" />
-              <Text style={styles.earnText}>Special Offers</Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
+          {renderBalanceCard()}
+          {renderQuickActions()}
+          {renderStats()}
+        </ScrollView>
+      )}
     </LinearGradient>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = (theme: any, isLargeDevice: boolean, width: number, height: number, columns: number, appFonts: any) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.TRANSPARENT,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingVertical: isLargeDevice ? width * 0.015 : width * 0.03,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: isLargeDevice ? width * 0.08 : width * 0.12,
+    height: isLargeDevice ? width * 0.08 : width * 0.12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
     flex: 1,
+    fontSize: isLargeDevice ? 18 : 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
     textAlign: 'center',
+    marginHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   headerSpacer: {
-    width: 40,
+    width: isLargeDevice ? width * 0.08 : width * 0.12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollContainer: {
+    paddingHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingBottom: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   balanceCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    margin: 20,
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: isLargeDevice ? width * 0.03 : width * 0.04,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  balanceGradient: {
+    padding: isLargeDevice ? width * 0.03 : width * 0.04,
   },
   balanceHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
   },
-  balanceTitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  balanceAmount: {
-    color: '#ffffff',
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  balanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   balanceLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  statAmount: {
+    fontSize: isLargeDevice ? 16 : 18,
     color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 4,
+    marginLeft: isLargeDevice ? width * 0.015 : width * 0.02,
+    fontWeight: '500',
   },
-  statLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-  },
-  actionsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  actionGradient: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  actionButtonSecondary: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  actionText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  transactionsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  transactionItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  transactionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  refreshButton: {
+    width: isLargeDevice ? width * 0.06 : width * 0.08,
+    height: isLargeDevice ? width * 0.06 : width * 0.08,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  transactionInfo: {
-    flex: 1,
-  },
-  transactionDescription: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  transactionDate: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  transactionAmount: {
-    fontSize: 16,
+  balanceAmount: {
+    fontSize: isLargeDevice ? 48 : 56,
     fontWeight: 'bold',
+    color: '#FFD700',
+    textAlign: 'center',
+    marginBottom: isLargeDevice ? width * 0.005 : width * 0.01,
   },
-  earnContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+  balanceCurrency: {
+    fontSize: isLargeDevice ? 18 : 20,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
   },
-  earnMethods: {
+  quickActionsContainer: {
+    marginBottom: isLargeDevice ? width * 0.03 : width * 0.04,
+  },
+  sectionTitle: {
+    fontSize: isLargeDevice ? 20 : 22,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    width: isLargeDevice ? width * 0.21 : width * 0.42,
+    marginBottom: isLargeDevice ? width * 0.015 : width * 0.02,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  actionGradient: {
+    padding: isLargeDevice ? width * 0.02 : width * 0.025,
+    alignItems: 'center',
+    minHeight: isLargeDevice ? width * 0.12 : width * 0.15,
+    justifyContent: 'center',
+  },
+  actionTitle: {
+    fontSize: isLargeDevice ? 14 : 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: isLargeDevice ? width * 0.01 : width * 0.015,
+    marginBottom: isLargeDevice ? width * 0.005 : width * 0.008,
+  },
+  actionSubtitle: {
+    fontSize: isLargeDevice ? 11 : 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+  statsContainer: {
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.03,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    width: isLargeDevice ? width * 0.21 : width * 0.42,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
-    padding: 16,
-  },
-  earnMethod: {
-    flexDirection: 'row',
+    padding: isLargeDevice ? width * 0.015 : width * 0.02,
+    marginBottom: isLargeDevice ? width * 0.015 : width * 0.02,
     alignItems: 'center',
-    paddingVertical: 8,
   },
-  earnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    marginLeft: 12,
+  statNumber: {
+    fontSize: isLargeDevice ? 20 : 24,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: isLargeDevice ? width * 0.005 : width * 0.008,
+  },
+  statLabel: {
+    fontSize: isLargeDevice ? 12 : 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
   },
 });
 
