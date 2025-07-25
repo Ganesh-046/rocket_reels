@@ -226,7 +226,8 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           userEmail: updateData.userEmail,
         };
         
-        console.log('📤 Minimal Request URL:', `https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`);
+        console.log('📤 Minimal payload being sent:', minimalPayload);
+        console.log('🔗 Minimal request URL:', `https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`);
         console.log('📤 Minimal Request Data:', JSON.stringify(minimalPayload, null, 2));
         
         const minimalResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`, {
@@ -282,6 +283,17 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
             response = { success: true, data: minimalResponseData.data, message: 'Profile updated with basic information' };
           }
         } else {
+          // Log the actual API response for debugging
+          console.log('❌ Minimal data update failed. Full response:', {
+            status: minimalResponse.status,
+            statusText: minimalResponse.statusText,
+            success: minimalResponseData.success,
+            message: minimalResponseData.message,
+            data: minimalResponseData.data,
+            error: minimalResponseData.error,
+            fullResponse: minimalResponseData,
+          });
+          
           // Show specific error messages from API test results
           let errorMessage = minimalResponseData.message || 'API update failed';
           
