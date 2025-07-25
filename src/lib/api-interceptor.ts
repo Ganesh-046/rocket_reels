@@ -199,7 +199,7 @@ class ApiInterceptor {
 
     // Check cache first for GET requests
     if (method === HTTP_METHODS.GET && cacheKey) {
-      const cachedData = MMKVStorage.getCache<T>(cacheKey);
+      const cachedData = MMKVStorage.getCache(cacheKey);
       if (cachedData) {
         this.logCache(cacheKey, 'HIT');
         const duration = Date.now() - startTime;

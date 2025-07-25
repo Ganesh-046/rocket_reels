@@ -1,6 +1,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { View, Text, FlatList, Animated, RefreshControl, StyleSheet, Platform, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Animated, RefreshControl, StyleSheet, Platform, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import useTheme from '../hooks/useTheme';
 import useThemedStyles from '../hooks/useThemedStyles';
@@ -51,6 +51,7 @@ import {
 } from '../hooks/useApi';
 import { useAuthState } from '../store/auth.store';
 import { ContentListRequest, ContentItem, BannerItem, ContentType } from '../types/api';
+import MMKVStorage from '../lib/mmkv';
 
 
 // Font constants
@@ -314,6 +315,36 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
 
  // Track if banner is being scrolled
  const [isBannerScrolling, setIsBannerScrolling] = useState(false);
+
+ // Debug function
+ const showDebugInfo = () => {
+   const alreadyLaunched = MMKVStorage.get('alreadyLaunched');
+   const currentState = {
+     isAuthenticated,
+     alreadyLaunched,
+     isSelected,
+     loadingStates,
+     errors: Object.keys(errors),
+     user: user ? 'Logged in' : 'Not logged in',
+   };
+
+   console.log('[HOME DEBUG] Current State:', currentState);
+   
+   Alert.alert(
+     '🔍 Home Debug',
+     `Authenticated: ${isAuthenticated}\nAlready Launched: ${alreadyLaunched}\nSelected: ${isSelected}\nUser: ${user ? 'Logged in' : 'Not logged in'}\nLoading: ${Object.values(loadingStates).some(Boolean)}\nErrors: ${Object.keys(errors).length}`,
+     [
+       { text: 'Reset Already Launched', onPress: () => {
+         MMKVStorage.remove('alreadyLaunched');
+         Alert.alert('Reset', 'Already launched has been reset. Restart the app to see onboarding again.');
+       }},
+       { text: 'Go to Onboarding', onPress: () => {
+         navigation.replace('Onboarding');
+       }},
+       { text: 'OK' }
+     ]
+   );
+ };
 
 
  // API Query Parameters
@@ -982,6 +1013,30 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
   return (
     <>
       <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} />
+      
+      {/* Debug Button */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          top: 50,
+          right: 20,
+          zIndex: 1000,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          backgroundColor: '#2ed573',
+          borderRadius: 8,
+        }}
+        onPress={showDebugInfo}
+      >
+        <Text style={{
+          fontSize: 12,
+          color: '#ffffff',
+          fontWeight: 'bold',
+        }}>
+          🔍 Debug
+        </Text>
+      </TouchableOpacity>
+      
       <LinearGradient 
         style={style.container} 
         colors={gradientColorsArray.filter(color => color && typeof color === 'string')}

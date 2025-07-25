@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // Auth Screens
@@ -15,29 +15,47 @@ import BottomTabNavigator from './BottomTabNavigator';
 
 // Store
 import { useAuthState, useIsAuthenticated } from '../store/auth.store';
-import MMKVStorage from '../lib/mmkv';
 
 // Navigation Service
 import { setNavigationRef } from './NavigationService';
 
+import MMKVStorage from '../lib/mmkv';
+
 const Stack = createNativeStackNavigator();
 
+// Debug Button Component
+const DebugButton = ({ 
+  title, 
+  color, 
+  onPress, 
+  style 
+}: { 
+  title: string; 
+  color: string; 
+  onPress: () => void; 
+  style?: any; 
+}) => (
+  <TouchableOpacity
+    style={[styles.debugButton, { backgroundColor: color }, style]}
+    onPress={onPress}
+  >
+    <Text style={styles.debugButtonText}>{title}</Text>
+  </TouchableOpacity>
+);
+
 // Loading Screen Component
-const LoadingScreen = () => (
+const LoadingScreen = ({ onDebugPress }: { onDebugPress: () => void }) => (
   <View style={styles.loadingContainer}>
     <ActivityIndicator size="large" color="#ed9b72" />
     <Text style={styles.loadingText}>Loading...</Text>
-  </View>
-);
-
-// No Internet Screen Component
-const NoInternetScreen = () => (
-  <View style={styles.noInternetContainer}>
-    <Icon name="wifi-off" size={64} color="#ff4757" />
-    <Text style={styles.noInternetTitle}>No Internet Connection</Text>
-    <Text style={styles.noInternetSubtitle}>
-      Please check your connection and try again
-    </Text>
+    
+    {/* Debug Button */}
+    <DebugButton
+      title="🔍 Debug Loading"
+      color="#ff4757"
+      onPress={onDebugPress}
+      style={styles.debugButtonTopRight}
+    />
   </View>
 );
 
@@ -56,55 +74,72 @@ const AuthStack = () => {
 };
 
 const RootNavigator: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(false);
+  const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
-    console.log('[ROOT DEBUG] RootNavigator component mounted');
-    console.log('[ROOT DEBUG] isAuthenticated:', isAuthenticated);
-    initializeApp();
+    checkFirstLaunch();
   }, []);
 
-  const initializeApp = async () => {
+  const checkFirstLaunch = async () => {
     try {
-      // Check if first launch
-      const hasLaunched = MMKVStorage.get('hasLaunched');
-      if (!hasLaunched) {
+      const value = MMKVStorage.get('alreadyLaunched');
+      
+      if (value === false) {
+        MMKVStorage.set('alreadyLaunched', true);
         setIsFirstLaunch(true);
-        MMKVStorage.set('hasLaunched', true);
+      } else {
+        setIsFirstLaunch(false);
       }
-
-      // Simulate loading delay (1 second as per spec)
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-
     } catch (error) {
-      setIsLoading(false);
+      setIsFirstLaunch(false);
     }
   };
 
-  // Determine initial route
-  const getInitialRouteName = () => {
-    if (isFirstLaunch) {
-      return 'Onboarding';
-    } else if (isAuthenticated) {
-      return 'Main';
-    } else {
-      return 'Auth';
-    }
+  // Debug function to show current state
+  const showDebugInfo = () => {
+    Alert.alert(
+      '🔍 Debug Info',
+      `First Launch: ${isFirstLaunch}\nAuthenticated: ${isAuthenticated}\nAlready Launched: ${MMKVStorage.get('alreadyLaunched')}\nUser: ${MMKVStorage.get('user') ? 'Logged in' : 'Not logged in'}\nToken: ${MMKVStorage.get('token') ? 'Present' : 'Not present'}`,
+      [
+        { text: 'Reset Already Launched', onPress: () => {
+          MMKVStorage.remove('alreadyLaunched');
+          Alert.alert('Reset', 'Already launched has been reset. Restart the app to see onboarding again.');
+        }},
+        { text: 'Clear All Data', onPress: () => {
+          MMKVStorage.clearAll();
+          Alert.alert('Clear All', 'All app data has been cleared. Restart the app to see onboarding again.');
+        }},
+        { text: 'OK' }
+      ]
+    );
   };
 
-  // Show loading screen during initialization
-  if (isLoading) {
-    return <LoadingScreen />;
+  // Show loading screen while checking first launch
+  if (isFirstLaunch === null) {
+    return <LoadingScreen onDebugPress={showDebugInfo} />;
   }
 
   // Show no internet screen when offline (simplified for now)
   if (!isOnline) {
-    return <NoInternetScreen />;
+    return (
+      <View style={styles.noInternetContainer}>
+        <Icon name="wifi-off" size={64} color="#ff4757" />
+        <Text style={styles.noInternetTitle}>No Internet Connection</Text>
+        <Text style={styles.noInternetSubtitle}>
+          Please check your connection and try again
+        </Text>
+      </View>
+    );
+  }
+
+  // Determine route name based on first launch
+  let routeName: string;
+  if (isFirstLaunch === true) {
+    routeName = 'Onboarding';
+  } else {
+    routeName = 'Main';
   }
 
   return (
@@ -117,7 +152,7 @@ const RootNavigator: React.FC = () => {
         screenOptions={{
           headerShown: false,
         }}
-        initialRouteName={getInitialRouteName()}
+        initialRouteName={routeName}
       >
         {/* Onboarding Screen */}
         <Stack.Screen 
@@ -152,6 +187,7 @@ const RootNavigator: React.FC = () => {
           }}
         />
       </Stack.Navigator>
+     
     </NavigationContainer>
   );
 };
@@ -188,6 +224,24 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  debugButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 1000,
+  },
+  debugButtonTopRight: {
+    top: 50,
+    right: 20,
+  },
+  debugButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

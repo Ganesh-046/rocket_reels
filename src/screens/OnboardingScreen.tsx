@@ -8,10 +8,12 @@ import {
   Dimensions,
   Image,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import MMKVStorage from '../lib/mmkv';
 
 const { width, height } = Dimensions.get('window');
 
@@ -64,7 +66,33 @@ const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleGetStarted = () => {
     // Navigate to auth stack since user is not authenticated yet
-    navigation.replace('Auth');
+    navigation.replace('Main');
+  };
+
+  const showDebugInfo = () => {
+    const alreadyLaunched = MMKVStorage.get('alreadyLaunched');
+    const currentState = {
+      currentIndex,
+      alreadyLaunched,
+      totalSlides: onboardingData.length,
+    };
+
+    console.log('[ONBOARDING DEBUG] Current State:', currentState);
+    
+    Alert.alert(
+      '🔍 Onboarding Debug',
+      `Current Slide: ${currentIndex + 1}/${onboardingData.length}\nAlready Launched: ${alreadyLaunched}\nSlide Title: ${onboardingData[currentIndex].title}`,
+      [
+        { text: 'Reset Already Launched', onPress: () => {
+          MMKVStorage.remove('alreadyLaunched');
+          Alert.alert('Reset', 'Already launched has been reset. Restart the app to see onboarding again.');
+        }},
+        { text: 'Complete Onboarding', onPress: () => {
+          handleGetStarted();
+        }},
+        { text: 'OK' }
+      ]
+    );
   };
 
   const handleScroll = (event: any) => {
@@ -116,6 +144,14 @@ const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         onPress={handleGetStarted}
       >
         <Text style={styles.skipText}>Skip</Text>
+      </TouchableOpacity>
+
+      {/* Debug Button */}
+      <TouchableOpacity
+        style={styles.debugButton}
+        onPress={showDebugInfo}
+      >
+        <Text style={styles.debugText}>🔍 Debug</Text>
       </TouchableOpacity>
 
       {/* Cards */}
@@ -178,6 +214,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '600',
+  },
+  debugButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 1000,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#ff4757',
+    borderRadius: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,

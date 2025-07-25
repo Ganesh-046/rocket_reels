@@ -233,14 +233,14 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
     const currentScrollY = contentOffset.y;
     const currentVelocity = velocity?.y || 0;
 
-    // Simplified scroll velocity detection - less aggressive
-    const isScrollingFast = Math.abs(currentVelocity) > 100; // Higher threshold for stability
-    const isScrollingWithMomentum = Math.abs(currentVelocity) > 200; // Much higher threshold
+    // Much stricter scroll velocity detection
+    const isScrollingFast = Math.abs(currentVelocity) > 150; // Higher threshold
+    const isScrollingWithMomentum = Math.abs(currentVelocity) > 300; // Much higher threshold
     
     setIsScrollingFast(isScrollingFast || isScrollingWithMomentum);
 
-    // Only update index when scrolling is very slow or stopped
-    if (!isScrollingWithMomentum && Math.abs(currentVelocity) < 50) {
+    // Only update index when scrolling is completely stopped or very slow
+    if (!isScrollingWithMomentum && Math.abs(currentVelocity) < 20) {
       const newIndex = Math.round(currentScrollY / viewHeight);
       if (newIndex !== currentIndex.current && newIndex >= 0 && newIndex < episodesData.length) {
         currentIndex.current = newIndex;
@@ -253,14 +253,14 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
       }
     }
 
-    // Longer debounced scroll end detection for stability
+    // Much longer debounced scroll end detection
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
 
     scrollTimeoutRef.current = setTimeout(() => {
       setIsScrollingFast(false);
-    }, 300); // Longer delay for better stability
+    }, 500); // Much longer delay for stability
   }, [episodesData, viewHeight, setCurrentVideo]);
 
   // Handle scroll momentum end
@@ -423,8 +423,8 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
 
   // Optimized viewability config for better scroll control - more stable
   const viewabilityConfig = useMemo(() => ({
-    itemVisiblePercentThreshold: 70, // Higher threshold for more stable detection
-    minimumViewTime: 300, // Longer minimum time to prevent rapid switching
+    itemVisiblePercentThreshold: 80, // Much higher threshold for more stable detection
+    minimumViewTime: 500, // Much longer minimum time to prevent rapid switching
   }), []);
 
   // Optimized item layout for better performance
@@ -637,11 +637,11 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
         viewabilityConfig={viewabilityConfig}
         snapToInterval={viewHeight}
         snapToAlignment="start"
-        decelerationRate="fast"
+        decelerationRate={0.8}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         initialNumToRender={1}
         refreshControl={
           <RefreshControl

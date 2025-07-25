@@ -127,8 +127,10 @@ export function useForm<T extends Record<string, any>>(
   const setErrors = useCallback((newErrors: Partial<FormErrors>) => {
     setErrorsState(prev => ({
       ...prev,
-      ...newErrors,
-    }));
+      ...Object.fromEntries(
+        Object.entries(newErrors).filter(([_, value]) => value !== undefined)
+      ),
+    } as FormErrors));
   }, []);
 
   const setTouched = useCallback(
