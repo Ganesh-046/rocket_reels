@@ -113,25 +113,14 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
 
   // Calculate screen dimensions
   const screenDimensions = useMemo(() => {
-    const StatusBarHeight = StatusBar.currentHeight || 0;
-    const navBarHeight = screenHeight - screenWidth - StatusBarHeight > 0 
-      ? screenHeight - screenWidth - StatusBarHeight 
-      : screenHeight - screenWidth;
-    
-    const dimensions = {
-      platformHeight: Platform.OS === 'android' 
-        ? screenWidth + navBarHeight - 10 
-        : screenWidth - insets.top + 21,
-      marginBottom: Platform.OS === 'android' 
-        ? tabBarHeight - navBarHeight + 10 
-        : tabBarHeight + insets.bottom - 21,
+    // Use full available height for both platforms
+    const availableHeight = screenHeight - insets.top - tabBarHeight - insets.bottom;
+    return {
+      platformHeight: availableHeight,
+      marginBottom: tabBarHeight + insets.bottom,
       insets
     };
-
-
-
-    return dimensions;
-  }, [screenWidth, insets, screenHeight, tabBarHeight]);
+  }, [screenWidth, screenHeight, insets, tabBarHeight]);
 
   // API Queries - Fixed to use correct parameters
   const {
