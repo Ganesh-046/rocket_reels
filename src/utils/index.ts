@@ -8,10 +8,10 @@ export * from './formatting';
 export * from './constants';
 
 // Logging utilities
-export * from './logger';
+
 
 // Existing utilities
-export * from './apiLogger';
+
 export * from './colorExtractor';
 export * from './dimensions';
 export * from './dummyData';

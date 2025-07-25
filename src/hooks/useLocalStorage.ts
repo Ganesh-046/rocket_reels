@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import MMKVStorage from '../lib/mmkv';
-import { log } from '../utils/logger';
+
 
 export function useLocalStorage<T>(
   key: string,
@@ -25,9 +25,9 @@ export function useLocalStorage<T>(
         const valueToStore = value instanceof Function ? value(storedValue) : value;
         setStoredValue(valueToStore);
         MMKVStorage.set(key, valueToStore);
-        log.cacheSet(key, valueToStore);
+
       } catch (error) {
-        log.error('STORAGE', `Error setting localStorage key "${key}"`, error);
+                  console.error('STORAGE: Error setting localStorage key', key, error);
       }
     },
     [key, storedValue]
@@ -37,9 +37,9 @@ export function useLocalStorage<T>(
     try {
       setStoredValue(initialValue);
       MMKVStorage.remove(key);
-      log.cacheClear(key);
+      
     } catch (error) {
-      log.error('STORAGE', `Error removing localStorage key "${key}"`, error);
+              console.error('STORAGE: Error removing localStorage key', key, error);
     }
   }, [key, initialValue]);
 

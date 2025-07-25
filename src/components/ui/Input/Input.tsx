@@ -9,7 +9,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { theme } from '../../../theme';
-import { log } from '../../../utils/logger';
+
 
 const { colors, spacing, borderRadius, typography } = theme;
 
@@ -46,13 +46,13 @@ const Input: React.FC<InputProps> = ({
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
-    log.userAction('Input Focus', { label, placeholder: props.placeholder });
+    
     props.onFocus?.(e);
   };
 
   const handleBlur = (e: any) => {
     setIsFocused(false);
-    log.userAction('Input Blur', { label, value: props.value });
+    
     props.onBlur?.(e);
   };
 
@@ -90,7 +90,7 @@ const Input: React.FC<InputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           onChangeText={(text) => {
-            log.userAction('Input Change', { label, text });
+      
             props.onChangeText?.(text);
           }}
           {...props}

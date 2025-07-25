@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { apiLogger } from '../../utils/apiLogger';
+
 import { useVideoQualityStore } from '../../store/videoQualityStore';
 import { useLikeDislikeContent, useLikedContent } from '../../hooks/useUserInteractions';
 import { useAuthUser } from '../../store/auth.store';
@@ -70,7 +70,8 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
   const getVideoUrl = useCallback(() => {
     // Log all available video URLs for debugging
     if (episode?.video_urls) {
-      apiLogger.logVideoQualityUrls(episode._id, episode.video_urls);
+      console.log('🎬 Video Quality URLs for:', episode._id);
+      console.log('📋 Available Qualities:', episode.video_urls);
     }
 
     // Get URL based on selected quality

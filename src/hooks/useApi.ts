@@ -53,7 +53,6 @@ import {
 } from '../types/api';
 
 import { useState, useCallback, useRef } from 'react';
-import { log } from '../utils/logger';
 
 export interface ApiState<T> {
   data: T | null;
@@ -82,12 +81,12 @@ export function useApi<T = any>(
 
   const execute = useCallback(
     async (...args: any[]): Promise<T | null> => {
-      log.hookCall('useApi.execute', { args });
-      log.time('useApi', 'API Request');
+      console.log('useApi.execute', { args });
+      console.time('useApi');
       
       // Cancel previous request if it exists
       if (abortControllerRef.current) {
-        log.info('useApi', 'Cancelling previous request');
+        console.info('useApi', 'Cancelling previous request');
         abortControllerRef.current.abort();
       }
 
@@ -102,8 +101,8 @@ export function useApi<T = any>(
 
       try {
         const result = await apiFunction(...args);
-        log.timeEnd('useApi', 'API Request');
-        log.success('useApi', 'API request successful', { result });
+        console.timeEnd('useApi');
+        console.log('useApi', 'API request successful', { result });
         
         setState(prev => ({
           ...prev,
@@ -113,16 +112,16 @@ export function useApi<T = any>(
         }));
         return result;
       } catch (error: any) {
-        log.timeEnd('useApi', 'API Request');
+        console.timeEnd('useApi');
         
         // Don't update state if request was cancelled
         if (error.name === 'AbortError') {
-          log.info('useApi', 'Request was cancelled');
+          console.info('useApi', 'Request was cancelled');
           return null;
         }
 
         const errorMessage = error?.message || 'An error occurred';
-        log.error('useApi', 'API request failed', { error: errorMessage, args });
+        console.error('useApi', 'API request failed', { error: errorMessage, args });
         
         setState(prev => ({
           ...prev,

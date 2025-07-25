@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile } from '../types/api';
 import MMKVStorage from '../lib/mmkv';
-import { log } from '../utils/logger';
 
 // Auth State Interface
 interface AuthState {
@@ -38,7 +37,7 @@ export const useAuthStore = create<AuthState>()(
 
       // Actions
       setUser: (user) => {
-        log.storeAction('AuthStore', 'setUser', { userId: user?._id });
+        console.log('AuthStore', 'setUser', { userId: user?._id });
         set({ user });
         if (user) {
           MMKVStorage.setUser(user);
@@ -48,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setToken: (token) => {
-        log.storeAction('AuthStore', 'setToken', { hasToken: !!token });
+        console.log('AuthStore', 'setToken', { hasToken: !!token });
         set({ token });
         if (token) {
           MMKVStorage.setToken(token);
@@ -70,7 +69,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: (user, token) => {
-        log.storeAction('AuthStore', 'login', { userId: user._id });
+        console.log('🔐 AuthStore - Login:', { 
+          userId: user._id,
+          userName: user.userName,
+          userEmail: user.userEmail,
+          timestamp: new Date().toISOString()
+        });
         set({
           user,
           token,
@@ -80,11 +84,12 @@ export const useAuthStore = create<AuthState>()(
         
         // Store in MMKV
         MMKVStorage.setAuthData(user, token);
+        console.log('💾 AuthStore - Data stored in MMKV');
       },
 
       logout: () => {
         const currentUser = get().user;
-        log.storeAction('AuthStore', 'logout', { userId: currentUser?._id });
+        console.log('AuthStore', 'logout', { userId: currentUser?._id });
         set({
           user: null,
           token: null,

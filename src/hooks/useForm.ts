@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { log } from '../utils/logger';
+
 
 export interface ValidationRule {
   required?: boolean;
@@ -92,13 +92,13 @@ export function useForm<T extends Record<string, any>>(
     const validationResults = fieldNames.map(field => validateField(field));
     const isValid = validationResults.every(result => result);
     
-    log.hookCall('useForm.validate', { fieldCount: fieldNames.length, isValid, errors });
+    
     return isValid;
   }, [validationRules, validateField, errors]);
 
   const setValue = useCallback(
     (field: keyof T, value: any) => {
-      log.hookStateChange('useForm', field as string, value);
+      
       setValuesState(prev => ({
         ...prev,
         [field]: value,

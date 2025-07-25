@@ -1,6 +1,6 @@
 // API Test Utility for Rocket Reels Backend
 import apiService from '../services/api.service';
-import { log } from './logger';
+
 
 interface ApiTestResult {
   endpoint: string;
@@ -23,7 +23,7 @@ export class ApiTester {
   async testAllApis(): Promise<ApiTestSummary> {
     this.results = [];
     
-    log.info('API_TEST', 'Starting comprehensive API tests...');
+    console.log('API_TEST: Starting comprehensive API tests...');
     
     // Test Authentication APIs
     await this.testAuthApis();
@@ -50,7 +50,7 @@ export class ApiTester {
   }
 
   private async testAuthApis() {
-    log.info('API_TEST', 'Testing Authentication APIs...');
+    console.log('API_TEST: Testing Authentication APIs...');
     
     // Test Get Active Countries (Public API)
     await this.testApi('Get Active Countries', () => 
@@ -69,7 +69,7 @@ export class ApiTester {
   }
 
   private async testContentApis() {
-    log.info('API_TEST', 'Testing Content APIs...');
+    console.log('API_TEST: Testing Content APIs...');
     
     // Test Get Content List
     await this.testApi('Get Content List', () => 
@@ -108,7 +108,7 @@ export class ApiTester {
   }
 
   private async testUserInteractionApis() {
-    log.info('API_TEST', 'Testing User Interaction APIs...');
+    console.log('API_TEST: Testing User Interaction APIs...');
     
     // Note: These require authentication, so we'll test with a mock user ID
     const mockUserId = 'test_user_id';
@@ -130,7 +130,7 @@ export class ApiTester {
   }
 
   private async testRewardsApis() {
-    log.info('API_TEST', 'Testing Rewards APIs...');
+    console.log('API_TEST: Testing Rewards APIs...');
     
     const mockUserId = 'test_user_id';
     
@@ -161,7 +161,7 @@ export class ApiTester {
   }
 
   private async testSubscriptionApis() {
-    log.info('API_TEST', 'Testing Subscription APIs...');
+    console.log('API_TEST: Testing Subscription APIs...');
     
     // Test Get Subscription Plans
     await this.testApi('Get Subscription Plans', () => 
@@ -175,7 +175,7 @@ export class ApiTester {
   }
 
   private async testRechargeApis() {
-    log.info('API_TEST', 'Testing Recharge APIs...');
+    console.log('API_TEST: Testing Recharge APIs...');
     
     const mockUserId = 'test_user_id';
     
@@ -204,7 +204,7 @@ export class ApiTester {
         duration
       });
       
-      log.success('API_TEST', `${endpoint} - SUCCESS (${duration}ms)`, {
+              console.log('API_TEST:', `${endpoint} - SUCCESS (${duration}ms)`, {
         status: response?.status,
         dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A'
       });
@@ -219,7 +219,7 @@ export class ApiTester {
         duration
       });
       
-      log.error('API_TEST', `${endpoint} - FAILED (${duration}ms)`, error);
+              console.error('API_TEST:', `${endpoint} - FAILED (${duration}ms)`, error);
     }
   }
 
@@ -237,7 +237,7 @@ export class ApiTester {
   }
 
   private logResults(summary: ApiTestSummary) {
-    log.info('API_TEST', '=== API TEST SUMMARY ===', {
+    console.log('API_TEST: === API TEST SUMMARY ===', {
       total: summary.total,
       passed: summary.passed,
       failed: summary.failed,
@@ -245,7 +245,7 @@ export class ApiTester {
     });
     
     if (summary.failed > 0) {
-      log.warn('API_TEST', 'Failed APIs:', 
+      console.warn('API_TEST: Failed APIs:', 
         summary.results.filter(r => !r.success).map(r => ({
           endpoint: r.endpoint,
           error: r.error
@@ -256,7 +256,7 @@ export class ApiTester {
 
   // Test specific API with authentication
   async testAuthenticatedApi(userId: string, token: string): Promise<ApiTestSummary> {
-    log.info('API_TEST', 'Testing authenticated APIs...');
+    console.log('API_TEST: Testing authenticated APIs...');
     
     // Set token for authenticated requests
     apiService.setToken(token);

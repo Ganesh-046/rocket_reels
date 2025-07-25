@@ -18,12 +18,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useLogin, useOTPVerification, useUpdateUser } from '../../hooks/useAuth';
+import { useGoogleLogin } from '../../hooks/useGoogleAuth';
 import { useAuthStore } from '../../store/auth.store';
 import { SignupRequest } from '../../types/api';
 import DateTimePicker from 'react-native-modal-datetime-picker';
 import moment from 'moment';
 import { NavigationService } from '../../navigation/NavigationService';
 import { StackNavigationProp } from '@react-navigation/stack';
+import GoogleIcon from '../../components/common/GoogleIcon';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,6 +72,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const loginMutation = useLogin();
   const otpMutation = useOTPVerification();
   const updateUserMutation = useUpdateUser();
+  const googleLoginMutation = useGoogleLogin();
   // const { data: countriesData } = useCountries(); // Temporarily commented out
 
   // Animations
@@ -471,6 +474,168 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      
+      const result = await googleLoginMutation.mutateAsync();
+      
+      // Log the complete Google login result
+      console.log('🔐 Google Login Result:', {
+        success: result.success,
+        data: result.data,
+        googleUser: result.googleUser,
+        error: result.error,
+        code: result.code,
+        timestamp: new Date().toISOString(),
+      });
+      
+      if (result.success && result.data) {
+        // Handle the case where backend returns just a number (user ID)
+        let processedData = result.data;
+        
+        if (typeof result.data === 'number') {
+          // Backend returned just a user ID, create a proper user object
+          console.log('🔄 Processing Google login response - backend returned user ID:', result.data);
+          
+          // Create a user object from Google data
+          const googleUser = result.googleUser;
+          const userObject = {
+            _id: result.data.toString(),
+            userId: result.data,
+            userName: googleUser?.name || 'Google User',
+            userEmail: googleUser?.email || '',
+            mobileNo: googleUser?.email || '', // Use email as mobile for Google users
+            callingCode: '+1',
+            profilePicture: googleUser?.photo || '',
+            googleId: googleUser?.id || '',
+            loginType: 'google',
+            // Add other required fields
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Add Google-specific fields
+            givenName: googleUser?.givenName || '',
+            familyName: googleUser?.familyName || '',
+          };
+          
+          processedData = {
+            userId: result.data,
+            isNew: false, // Assume existing user since we got an ID
+            user: userObject,
+            token: 'google-auth-token', // Temporary token for Google auth
+          };
+          
+          console.log('✅ Created user object from Google data:', userObject);
+        } else if (result.data && typeof result.data === 'object') {
+          // Backend returned an object with user data and token
+          console.log('🔄 Processing Google login response - backend returned object:', result.data);
+          
+          const googleUser = result.googleUser;
+          const userObject = {
+            _id: result.data.userId?.toString() || result.data._id?.toString() || 'unknown',
+            userId: result.data.userId || result.data._id,
+            userName: result.data.userName || googleUser?.name || 'Google User',
+            userEmail: result.data.userEmail || googleUser?.email || '',
+            mobileNo: result.data.mobileNo || googleUser?.email || '',
+            callingCode: result.data.callingCode || '+1',
+            profilePicture: result.data.profilePicture || googleUser?.photo || '',
+            googleId: googleUser?.id || '',
+            loginType: 'google',
+            // Add other required fields
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Add Google-specific fields
+            givenName: googleUser?.givenName || '',
+            familyName: googleUser?.familyName || '',
+          };
+          
+          processedData = {
+            userId: result.data.userId || result.data._id,
+            isNew: result.data.isNew || false,
+            user: userObject,
+            token: result.data.token || 'google-auth-token',
+          };
+          
+          console.log('✅ Created user object from backend response:', userObject);
+        }
+        
+        if (processedData.isNew) {
+          // New user - set up profile (matching your existing flow)
+          setUserId(processedData.userId);
+          setToken(processedData.token);
+          
+          // Pre-fill form with Google data
+          if (result.googleUser) {
+            setFormData(prev => ({
+              ...prev,
+              name: result.googleUser.name || '',
+              email: result.googleUser.email || '',
+            }));
+          }
+          
+          setStep(3);
+        } else {
+          // Existing user - login directly (matching your existing flow)
+          if (processedData.user) {
+            console.log('🔐 Logging in existing Google user:', processedData.user);
+            console.log('🔑 Using token:', processedData.token);
+            login(processedData.user, processedData.token);
+          } else {
+            console.log('🔐 Logging in with minimal user data');
+            login({ _id: processedData.userId } as any, processedData.token);
+          }
+          
+          // Navigate to main screen
+          setTimeout(() => {
+            try {
+              NavigationService.navigate('Main');
+            } catch (navError) {
+              console.log('Navigation error:', navError);
+              NavigationService.reset('Main');
+            }
+          }, 100);
+        }
+      } else {
+        // Log error cases
+        console.log('❌ Google Login Failed:', {
+          success: result.success,
+          error: result.error,
+          code: result.code,
+          timestamp: new Date().toISOString(),
+        });
+        
+        // Handle specific error cases
+        if (result.code === 'CANCELLED') {
+          // User cancelled - no need to show error
+          return;
+        } else if (result.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+          Alert.alert(
+            'Google Play Services Required',
+            'Please update Google Play Services to continue with Google Sign-In.',
+            [{ text: 'OK' }]
+          );
+        } else if (result.code === 'NATIVE_MODULE_NOT_AVAILABLE' || result.code === 'NOT_AVAILABLE') {
+          Alert.alert(
+            'Google Sign-In Not Available',
+            'Google Sign-In is not properly configured. Please rebuild the app.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', result.error || 'Google login failed. Please try again.');
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Google Login Exception:', {
+        error: error?.message || error,
+        stack: error?.stack,
+        timestamp: new Date().toISOString(),
+      });
+      Alert.alert('Error', 'Google login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const displayTime = () => {
     const minutes = Math.floor(timeRemaining / 60);
     const seconds = timeRemaining % 60;
@@ -566,8 +731,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.socialButton}>
-          <Icon name="g-translate" size={24} color="#4285F4" />
+        <TouchableOpacity 
+          style={[styles.socialButton, loading && styles.disabledButton]}
+          onPress={handleGoogleLogin}
+          disabled={loading}
+        >
+          <GoogleIcon size={24} />
           <Text style={[styles.primaryButtonText, { marginLeft: 12 }]}>
             Continue with Google
           </Text>
@@ -755,7 +924,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       <View style={styles.contentContainer}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => step > 1 ? setStep(step - 1 as any) : navigation.goBack()}
+          onPress={() => step > 1 ? setStep(step - 1 as any) : navigation.navigate('Main')}
         >
           <Icon name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>

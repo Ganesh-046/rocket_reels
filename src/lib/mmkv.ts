@@ -137,6 +137,12 @@ class MMKVStorage {
       // Also store individually for backward compatibility
       this.setUser(user);
       this.setToken(token);
+      console.log('💾 MMKV - Auth data stored:', {
+        userId: user._id,
+        userName: user.userName,
+        userEmail: user.userEmail,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
       console.warn('[MMKV] Failed to set auth data:', error);
     }

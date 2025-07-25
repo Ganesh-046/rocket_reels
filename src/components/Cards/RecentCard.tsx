@@ -33,7 +33,6 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index, navigation, propCa
 
 
 
- console.log('item', item);
 
 
  const { _id, timestamp } = item;
@@ -46,11 +45,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index, navigation, propCa
      const contentTitle = item.title || item.name;
      const contentDescription = item.description;
     
-     console.log('RecentCard clicked:', {
-       contentId,
-       contentTitle,
-       contentDescription
-     });
+
     
      // Navigate to EpisodePlayerScreen with content data
      navigation.navigate('EpisodePlayer', {

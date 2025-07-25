@@ -14,15 +14,19 @@ import {
   Share,
   Clipboard,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { PressableButton } from '../../../components/Button';
+import { SvgIcons } from '../../../components/common/SvgIcons';
 
 // Auth Store
 import { useAuthStore, useAuthUser } from '../../../store/auth.store';
@@ -72,6 +76,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [balanceData, setBalanceData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   // State for invitation modal
   const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false);
@@ -85,9 +90,108 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
 
   const marginBottom = Platform.OS === 'android' ? tabBarHeight - 50 : tabBarHeight + insets.bottom - 20;
 
-  // API Functions
-  const getUserProfile = async (userId: string) => {
+  // MMKV Storage Functions
+  const saveProfileToMMKV = (profileData: any) => {
     try {
+      MMKVStorage.set('userProfile', profileData);
+      console.log('💾 Profile data saved to MMKV');
+    } catch (error) {
+      console.error('❌ Failed to save profile to MMKV:', error);
+    }
+  };
+
+  const getUserIdFromMMKV = () => {
+    try {
+      const authData = MMKVStorage.get('auth-data');
+      if (authData && authData.user && authData.user._id) {
+        console.log('🆔 User ID loaded from MMKV:', authData.user._id);
+        return authData.user._id;
+      }
+    } catch (error) {
+      console.error('❌ Failed to get user ID from MMKV:', error);
+    }
+    return null;
+  };
+
+  const loadProfileFromMMKV = () => {
+    try {
+      const cachedProfile = MMKVStorage.get('userProfile');
+      if (cachedProfile) {
+        console.log('📱 Profile data loaded from MMKV');
+        return cachedProfile;
+      }
+    } catch (error) {
+      console.error('❌ Failed to load profile from MMKV:', error);
+    }
+    return null;
+  };
+
+  const saveBalanceToMMKV = (balanceData: any) => {
+    try {
+      MMKVStorage.set('userBalance', balanceData);
+      console.log('💾 Balance data saved to MMKV');
+    } catch (error) {
+      console.error('❌ Failed to save balance to MMKV:', error);
+    }
+  };
+
+  const clearCachedData = () => {
+    try {
+      MMKVStorage.remove('userProfile');
+      MMKVStorage.remove('userBalance');
+      console.log('🗑️ Cached profile data cleared');
+    } catch (error) {
+      console.error('❌ Failed to clear cached data:', error);
+    }
+  };
+
+  const checkAuthStatus = () => {
+    try {
+      const authData = MMKVStorage.get('auth-data');
+      const token = MMKVStorage.getToken();
+      const user = MMKVStorage.getUser();
+      
+      console.log('🔍 Auth Status Check:', {
+        hasAuthData: !!authData,
+        hasToken: !!token,
+        hasUser: !!user,
+        tokenLength: token?.length || 0,
+        userId: user?._id || 'none',
+        userName: user?.userName || 'none',
+      });
+      
+      return { authData, token, user };
+    } catch (error) {
+      console.error('❌ Failed to check auth status:', error);
+      return { authData: null, token: null, user: null };
+    }
+  };
+
+  const loadBalanceFromMMKV = () => {
+    try {
+      const cachedBalance = MMKVStorage.get('userBalance');
+      if (cachedBalance) {
+        console.log('💰 Balance data loaded from MMKV');
+        return cachedBalance;
+      }
+    } catch (error) {
+      console.error('❌ Failed to load balance from MMKV:', error);
+    }
+    return null;
+  };
+
+  // API Functions
+  const getUserProfile = async (userId: string, forceRefresh = false) => {
+    try {
+      // Load from cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedProfile = loadProfileFromMMKV();
+        if (cachedProfile) {
+          setUserProfile(cachedProfile);
+          console.log('📱 Using cached profile data');
+        }
+      }
+
       setLoading(true);
       console.log('🔍 Fetching user profile for:', userId);
       const response = await apiService.getUserProfile(userId);
@@ -95,35 +199,46 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       
       if (response.status === 200 && response.data) {
         setUserProfile(response.data);
-        console.log('✅ User profile set:', response.data);
+        saveProfileToMMKV(response.data);
+        console.log('✅ User profile set and cached:', response.data);
       } else {
         console.warn('⚠️ User profile response not successful:', response);
       }
     } catch (error) {
       console.error('❌ Get user profile error:', error);
-      // Show error to user
-      Alert.alert('Error', 'Failed to load user profile. Please try again.');
+      // Don't show error alert - use store data instead
+      console.log('🔄 Falling back to store data for profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const getUserBalance = async (userId: string) => {
+  const getUserBalance = async (userId: string, forceRefresh = false) => {
     try {
+      // Load from cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedBalance = loadBalanceFromMMKV();
+        if (cachedBalance) {
+          setBalanceData(cachedBalance);
+          console.log('💰 Using cached balance data');
+        }
+      }
+
       console.log('💰 Fetching balance for:', userId);
       const response = await apiService.getBalance(userId);
       console.log('💳 Balance response:', response);
       
       if (response.status === 200 && response.data) {
         setBalanceData(response.data);
-        console.log('✅ Balance set:', response.data);
+        saveBalanceToMMKV(response.data);
+        console.log('✅ Balance set and cached:', response.data);
       } else {
         console.warn('⚠️ Balance response not successful:', response);
       }
     } catch (error) {
       console.error('❌ Get balance error:', error);
-      // Show error to user
-      Alert.alert('Error', 'Failed to load wallet balance. Please try again.');
+      // Don't show error alert - balance is optional
+      console.log('🔄 Balance fetch failed, continuing without balance data');
     }
   };
 
@@ -198,12 +313,72 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     }
   };
 
+  // Refresh function for pull-to-refresh
+  const handleRefresh = async () => {
+    const userId = user?._id || getUserIdFromMMKV();
+    if (!userId) {
+      console.log('❌ No user ID available for refresh');
+      setRefreshing(false);
+      return;
+    }
+    
+    setRefreshing(true);
+    console.log('🔄 Refreshing profile data for user:', userId);
+    
+    try {
+      await Promise.all([
+        getUserProfile(userId, true), // Force refresh
+        getUserBalance(userId, true)  // Force refresh
+      ]);
+    } catch (error) {
+      console.error('❌ Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Load cached data immediately on mount (regardless of auth state)
+  useEffect(() => {
+    console.log('🚀 Component mounted - loading cached data');
+    
+    // Check auth status first
+    const authStatus = checkAuthStatus();
+    
+    const cachedProfile = loadProfileFromMMKV();
+    const cachedBalance = loadBalanceFromMMKV();
+    
+    if (cachedProfile) {
+      setUserProfile(cachedProfile);
+      console.log('📱 Cached profile loaded on mount');
+    }
+    if (cachedBalance) {
+      setBalanceData(cachedBalance);
+      console.log('💰 Cached balance loaded on mount');
+    }
+  }, []); // Empty dependency array - runs only on mount
+
+  // Fetch fresh data when user is available
   useEffect(() => {
     if (user?._id) {
+      console.log('👤 User available - fetching fresh data for:', user._id);
       getUserProfile(user._id);
       getUserBalance(user._id);
     }
   }, [user?._id]);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const userId = user?._id || getUserIdFromMMKV();
+      if (userId) {
+        console.log('🎯 Screen focused - refreshing profile data for user:', userId);
+        getUserProfile(userId, true);
+        getUserBalance(userId, true);
+      } else {
+        console.log('🎯 Screen focused - no user ID available');
+      }
+    }, [user?._id])
+  );
 
   // Handle logout
   const handleLogout = () => {
@@ -216,6 +391,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
+            clearCachedData(); // Clear cached profile data
             logout();
             navigation.replace('Auth');
           },
@@ -335,6 +511,18 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const userEmail = userProfile?.userEmail || user?.userEmail || 'No email';
   const referralCode = userProfile?.referralCode || 'N/A';
   const firstLetter = userName?.charAt(0)?.toUpperCase() || 'G';
+  
+  // Check if user is logged in
+  const isUserLoggedIn = !!user;
+  
+  // Debug logging for user data
+  console.log('👤 Profile Screen - User Data:', {
+    userFromStore: user,
+    userFromAPI: userProfile,
+    finalUserName: userName,
+    finalUserEmail: userEmail,
+    timestamp: new Date().toISOString(),
+  });
   
   // Handle balance data structure - check for coinsQuantity structure
   const balance = balanceData?.coinsQuantity?.totalCoins || 
@@ -475,24 +663,55 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
         <ScrollView
           onScroll={onScroll}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#E9743A', '#CB2D4D']}
+              tintColor="#E9743A"
+            />
+          }
         >
           {/* Profile Header */}
           <View style={[styles.profileHeader, { marginTop: insets.top }]}>
             <View style={styles.profileInfo}>
               <View style={styles.profileImage}>
-                <Text style={styles.profileInitial}>{firstLetter}</Text>
+                {(user as any)?.profilePicture ? (
+                  <Image 
+                    source={{ uri: (user as any).profilePicture }} 
+                    style={styles.profileImageStyle}
+                  />
+                ) : (
+                  <Text style={styles.profileInitial}>{firstLetter}</Text>
+                )}
               </View>
               <View style={styles.profileDetails}>
                 <Text style={styles.userName}>{userName}</Text>
                 <Text style={styles.userEmail}>{userEmail}</Text>
               </View>
             </View>
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={() => navigation.navigate('EditProfile')}
-            >
-              <Icon name="edit" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
-            </TouchableOpacity>
+            {isUserLoggedIn ? (
+              <PressableButton style={{ padding: isLargeDevice ? width * .02 : width * .04 }} onPress={() => navigation.navigate('EditProfile')}>
+                <SvgIcons name={'edit'} size={isLargeDevice ? width * .025 : width * .05} color="#ffffff" />
+              </PressableButton>
+            ) : (
+              <PressableButton style={styles.btnContainer} onPress={() => navigation.navigate('Auth')}>
+                <LinearGradient 
+                  colors={['#E9743A', '#CB2D4D']}
+                  style={{ 
+                    padding: isLargeDevice ? width * .01 : width * .02, 
+                    paddingHorizontal: isLargeDevice ? width * .025 : width * .05, 
+                    justifyContent: 'center', 
+                    borderRadius: isLargeDevice ? width * .015 : width * .03, 
+                    alignItems: 'center' 
+                  }}
+                >
+                  <Text style={styles.heading}>
+                    Login
+                  </Text>
+                </LinearGradient>
+              </PressableButton>
+            )}
           </View>
 
           <View style={styles.contentContainer}>
@@ -730,6 +949,20 @@ const styles = StyleSheet.create({
   },
   profileInitial: {
     fontSize: isLargeDevice ? 24 : 32,
+    fontWeight: '600',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  profileImageStyle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+  },
+  btnContainer: {
+    // Button container style
+  },
+  heading: {
+    fontSize: isLargeDevice ? 14 : 16,
     fontWeight: '600',
     color: '#ffffff',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',

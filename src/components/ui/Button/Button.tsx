@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { theme } from '../../../theme';
-import { log } from '../../../utils/logger';
+
 
 const { colors } = theme;
 
@@ -47,7 +47,7 @@ const Button: React.FC<ButtonProps> = ({
   ];
 
   const handlePress = () => {
-    log.userAction('Button Press', { title, variant, size, disabled, loading });
+    
     onPress();
   };
 

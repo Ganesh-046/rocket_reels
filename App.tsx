@@ -11,19 +11,18 @@ import { AppState, AppStateStatus } from 'react-native';
 import RootNavigator from './src/navigation/RootNavigator';
 import ThemesContext from './src/context/ThemeContext';
 import QueryClientProvider from './src/app/QueryClientProvider';
-import { useApiLogger } from './src/hooks/useApiLogger';
-import { log } from './src/utils/logger';
+
+
 import { setReactNativeReady } from './src/lib/mmkv';
 
 function App(): React.JSX.Element {
   const [isRNReady, setIsRNReady] = useState(false);
   
   // Initialize API logger to intercept all fetch calls
-  useApiLogger();
+
   
   useEffect(() => {
-    log.info('APP', 'Rocket Reels App started');
-    log.info('APP', 'App version', { version: '1.0.0' });
+
     console.log('[APP DEBUG] App component mounted');
     console.log('[APP DEBUG] Testing ad system initialization...');
     

@@ -12,17 +12,17 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  KeyboardTypeOptions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { SvgIcons } from '../../../components/common/SvgIcons';
 import DateTimePicker from 'react-native-modal-datetime-picker';
 import moment from 'moment';
 
 // Store and API
 import { useAuthStore, useAuthUser, useAuthToken } from '../../../store/auth.store';
-import ApiService from '../../../services/api.service';
+import authService from '../../../services/auth.service';
 
 const { width } = Dimensions.get('window');
 const isLargeDevice = width > 768;
@@ -35,139 +35,10 @@ interface NavigationProps {
   };
 }
 
-interface CustomTextInputProps {
-  label?: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder: string;
-  maxLength: number;
-  keyboardType?: KeyboardTypeOptions;
-  editable?: boolean;
-  style?: any;
-}
-
-interface CustomButtonProps {
-  title: string;
-  onPress: () => void;
-  loading?: boolean;
-  disabled?: boolean;
-  style?: any;
-}
-
-interface CustomDropdownProps {
-  data: Array<{ label: string; value: string }>;
-  value: string;
-  onValueChange: (value: string) => void;
-  placeholder: string;
-  style?: any;
-}
-
-// Custom Text Input Component
-const CustomTextInput: React.FC<CustomTextInputProps> = ({ 
-  label, 
-  value, 
-  onChangeText, 
-  placeholder, 
-  maxLength, 
-  keyboardType = 'default',
-  editable = true,
-  style = {}
-}) => (
-  <View style={[styles.inputContainer, style]}>
-    {label && <Text style={styles.inputLabel}>{label}</Text>}
-    <View style={[styles.textInputWrapper, !editable && styles.disabledInput]}>
-      <TextInput
-        style={styles.textInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        maxLength={maxLength}
-        keyboardType={keyboardType}
-        editable={editable}
-      />
-    </View>
-  </View>
-);
-
-// Custom Button Component
-const CustomButton: React.FC<CustomButtonProps> = ({ 
-  title, 
-  onPress, 
-  loading = false, 
-  disabled = false,
-  style = {}
-}) => (
-  <TouchableOpacity
-    style={[
-      styles.button,
-      disabled && styles.buttonDisabled,
-      style
-    ]}
-    onPress={onPress}
-    disabled={disabled || loading}
-  >
-    <LinearGradient
-      colors={disabled ? ['#ccc', '#999'] : ['#E9743A', '#CB2D4D']}
-      style={styles.buttonGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color="#ffffff" />
-      ) : (
-        <Text style={styles.buttonText}>{title}</Text>
-      )}
-    </LinearGradient>
-  </TouchableOpacity>
-);
-
-// Custom Dropdown Component
-const CustomDropdown: React.FC<CustomDropdownProps> = ({ 
-  data, 
-  value, 
-  onValueChange, 
-  placeholder,
-  style = {}
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = data.find(option => option.value === value);
-
-  return (
-    <View style={[styles.dropdownContainer, style]}>
-      <Text style={styles.inputLabel}>Gender</Text>
-      <TouchableOpacity
-        style={styles.dropdownWrapper}
-        onPress={() => setIsOpen(!isOpen)}
-      >
-        <Text style={[
-          styles.dropdownText,
-          !selectedOption && styles.placeholderText
-        ]}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </Text>
-        <Icon name="keyboard-arrow-down" size={20} color="#333" />
-      </TouchableOpacity>
-      
-      {isOpen && (
-        <View style={styles.dropdownOptions}>
-          {data.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.dropdownOption}
-              onPress={() => {
-                onValueChange(option.value);
-                setIsOpen(false);
-              }}
-            >
-              <Text style={styles.dropdownOptionText}>{option.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-};
+const genderOptions = [
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' }
+];
 
 const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -181,6 +52,7 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [formData, setFormData] = useState({
+    profileImg: '',
     userName: '',
     userEmail: '',
     mobileNo: '',
@@ -188,37 +60,23 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     dateOfBirth: '',
     referralCode: '',
     callingCode: '+91',
-    profileImg: ''
   });
-
-  // Gender options
-  const genderOptions = [
-    { label: 'Male', value: 'male' },
-    { label: 'Female', value: 'female' }
-  ];
 
   // Load user data on component mount
   useEffect(() => {
     if (user) {
       setFormData({
+        profileImg: (user as any)?.profileImage || 'https://i.pinimg.com/474x/3f/dd/e4/3fdde421b22a34874e9be56a4277e04c.jpg',
         userName: user.userName || '',
         userEmail: user.userEmail || '',
         mobileNo: user.mobileNo || '',
         gender: user.gender?.toLowerCase() || '',
         dateOfBirth: user.dateOfBirth || '',
-        referralCode: '', // Not in UserProfile type, so default to empty
+        referralCode: '',
         callingCode: user.callingCode || '+91',
-        profileImg: '' // Not in UserProfile type, so default to empty
       });
     }
   }, [user]);
-
-  // Set token in ApiService when component mounts
-  useEffect(() => {
-    if (token) {
-      ApiService.setToken(token);
-    }
-  }, [token]);
 
   // Handle input changes
   const handleInputChange = (field: string, value: string) => {
@@ -284,7 +142,7 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     return true;
   };
 
-  // Handle profile update
+  // Handle profile update - following old code structure
   const handleUpdateProfile = async () => {
     if (!validateForm()) {
       return;
@@ -295,77 +153,184 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       return;
     }
 
-    if (!token) {
-      Alert.alert('Error', 'Authentication token not found. Please login again.');
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Set token in ApiService before making the call
-      ApiService.setToken(token);
-
+      // Prepare form data - based on API test results (omit referral code to avoid validation issues)
       const updateData = {
+        profileImg: formData.profileImg || '',
         userName: formData.userName.trim(),
-        userEmail: formData.userEmail.trim(),
-        mobileNo: formData.mobileNo.trim(),
-        gender: formData.gender,
-        dateOfBirth: formData.dateOfBirth,
-        profileImg: formData.profileImg
+        userEmail: formData.userEmail.trim() || undefined,
+        mobileNo: formData.mobileNo.trim().replace(/\D/g, '') || undefined, // Remove non-digits
+        gender: formData.gender as 'male' | 'female',
+        dateOfBirth: formData.dateOfBirth || undefined,
+        // Omit referralCode completely to avoid "referral code does not exist" error
       };
 
-      // Add referral code if present (as optional field)
-      if (formData.referralCode) {
-        (updateData as any).referralCode = formData.referralCode.trim();
+      // Remove undefined values to match API expectations
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key as keyof typeof updateData] === undefined) {
+          delete updateData[key as keyof typeof updateData];
+        }
+      });
+
+      // Additional validation based on API test results
+      if (updateData.mobileNo && updateData.mobileNo.length < 10) {
+        Alert.alert('Error', 'Mobile number must be at least 10 digits');
+        return;
       }
 
-      console.log('Updating profile with data:', updateData);
-      console.log('User ID:', user._id);
-      console.log('Token:', token);
+      // Validate date format (YYYY-MM-DD) - critical for age calculation
+      if (updateData.dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(updateData.dateOfBirth)) {
+        Alert.alert('Error', 'Date must be in YYYY-MM-DD format');
+        return;
+      }
 
-      // Try the public endpoint first (as per old code)
-      let response;
-      try {
-        response = await ApiService.updateUserProfilePublic(user._id, updateData);
-        console.log('Public endpoint response:', response);
-      } catch (publicError: any) {
-        console.log('Public endpoint failed, trying private endpoint:', publicError);
-        
-        // If public endpoint fails, try the private endpoint
-        try {
-          response = await ApiService.updateUserProfile(user._id, updateData);
-          console.log('Private endpoint response:', response);
-        } catch (privateError: any) {
-          console.log('Private endpoint also failed:', privateError);
-          throw privateError; // Throw the last error
+      // Validate date is not in the future (causes age calculation issues)
+      if (updateData.dateOfBirth) {
+        const birthDate = new Date(updateData.dateOfBirth);
+        const today = new Date();
+        if (birthDate > today) {
+          Alert.alert('Error', 'Date of birth cannot be in the future');
+          return;
         }
       }
 
-      console.log('Final API Response:', response);
+              console.log('🔧 Updating profile with data:', updateData);
+        console.log('👤 User ID:', user._id);
+        console.log('🔍 User ID type:', typeof user._id);
+        console.log('🔍 User ID length:', user._id?.length);
 
-      if (response.status === 200) {
+              // Test API endpoint first
+        console.log('🧪 Testing API endpoint reachability...');
+        try {
+          const testResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/content/activeCountries`, {
+            method: 'GET',
+            headers: {
+              'public-request': 'true',
+            },
+          });
+          const testData = await testResponse.json();
+          console.log('✅ API endpoint test successful:', testData.success);
+        } catch (testError: any) {
+          console.log('⚠️ API endpoint test failed:', testError.message);
+        }
+
+        // Try with minimal data first (based on API test results showing success with minimal data)
+        let response;
+        try {
+        console.log('🔄 Trying with minimal data first (userName + userEmail)...');
+        
+        const minimalPayload = {
+          userName: updateData.userName,
+          userEmail: updateData.userEmail,
+        };
+        
+        console.log('📤 Minimal Request URL:', `https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`);
+        console.log('📤 Minimal Request Data:', JSON.stringify(minimalPayload, null, 2));
+        
+        const minimalResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'public-request': 'true',
+          },
+          body: JSON.stringify(minimalPayload),
+        });
+
+        const minimalResponseData = await minimalResponse.json();
+        console.log('🌐 Minimal API Response:', {
+          status: minimalResponse.status,
+          statusText: minimalResponse.statusText,
+          success: minimalResponseData.success,
+          message: minimalResponseData.message,
+          data: minimalResponseData.data,
+          error: minimalResponseData.error,
+          fullResponse: minimalResponseData,
+        });
+
+        if (minimalResponse.ok && minimalResponseData.success) {
+          console.log('✅ Minimal data update successful, trying with full data...');
+          
+          // If minimal data works, try with full data
+          console.log('📤 Full Request Data:', JSON.stringify(updateData, null, 2));
+          
+          const fullResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/user/updateUser/${user._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'public-request': 'true',
+            },
+            body: JSON.stringify(updateData),
+          });
+
+          const fullData = await fullResponse.json();
+          console.log('🌐 Full API Response:', {
+            status: fullResponse.status,
+            statusText: fullResponse.statusText,
+            success: fullData.success,
+            message: fullData.message,
+            data: fullData.data,
+            error: fullData.error,
+            fullResponse: fullData,
+          });
+
+          if (fullResponse.ok && fullData.success) {
+            response = { success: true, data: fullData.data, message: fullData.message };
+          } else {
+            // If full data fails, use minimal data success
+            response = { success: true, data: minimalResponseData.data, message: 'Profile updated with basic information' };
+          }
+        } else {
+          // Show specific error messages from API test results
+          let errorMessage = minimalResponseData.message || 'API update failed';
+          
+          // Handle specific known errors
+          if (minimalResponseData.message === 'referral code does not exist.') {
+            errorMessage = 'Invalid referral code. Please remove it or use a valid code.';
+          } else if (minimalResponseData.message === 'Error while updating user data.') {
+            if (minimalResponseData.data && minimalResponseData.data.message && minimalResponseData.data.message.includes('age')) {
+              errorMessage = 'Invalid date of birth. Please check the date format and ensure it\'s not in the future.';
+            } else {
+              errorMessage = 'Invalid data provided. Please check all fields and try again.';
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+              } catch (apiError: any) {
+          console.log('🔍 API Error Details:', {
+            message: apiError.message,
+            status: apiError.status,
+            data: apiError.data,
+          });
+          throw apiError;
+        }
+
+      // Handle response like old code
+      if (response && response.success) {
+        console.log('🎉 Profile update successful:', response.data);
+        
         // Update local user data
-        updateUser(updateData);
-        Alert.alert('Success', 'Profile updated successfully!');
+        if (response.data) {
+          updateUser(response.data);
+        }
+        
+        Alert.alert('Success', response.message || 'Profile updated successfully!');
         navigation.goBack();
       } else {
-        Alert.alert('Error', response.message || 'Failed to update profile');
+        console.log('⚠️ Profile update response not successful:', response);
+        Alert.alert('Error', response?.message || 'Something went wrong!');
       }
     } catch (error: any) {
-      console.error('Error updating profile:', error);
-      
-      // More detailed error handling
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-        console.error('Error status:', error.response.status);
-        Alert.alert('Error', `Failed to update profile: ${error.response.data?.message || error.message}`);
-      } else if (error.request) {
-        console.error('Error request:', error.request);
-        Alert.alert('Error', 'Network error. Please check your connection and try again.');
-      } else {
-        Alert.alert('Error', 'Failed to update profile. Please try again.');
-      }
+      console.error('❌ Error updating profile:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response,
+        data: error.data,
+      });
+      Alert.alert('Error', error.message || 'Something went wrong!');
     } finally {
       setLoading(false);
     }
@@ -382,7 +347,7 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
 
   // Get first letter for avatar
   const getFirstLetter = () => {
-    return formData.userName?.charAt(0)?.toUpperCase() || 'U';
+    return formData.userName?.charAt(0)?.toUpperCase() || 'G';
   };
 
   // Handle logout
@@ -396,7 +361,6 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
-            // Handle logout through auth store
             navigation.reset({
               index: 0,
               routes: [{ name: 'Auth' }]
@@ -433,111 +397,156 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
         </View>
 
         {/* Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <TouchableOpacity 
+          style={styles.contentContainer} 
+          onPress={() => Keyboard.dismiss()}
+          activeOpacity={1}
         >
-          {/* Profile Avatar */}
-          <View style={styles.avatarContainer}>
-            {formData.profileImg ? (
-              <Image
-                source={{ uri: formData.profileImg }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{getFirstLetter()}</Text>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Profile Avatar */}
+            <View style={styles.profileSection}>
+              <View style={styles.profileContainer}>
+                {formData.profileImg ? (
+                  <Image
+                    source={{ uri: formData.profileImg }}
+                    style={styles.profileImage}
+                  />
+                ) : (
+                  <Text style={styles.profileInitial}>{getFirstLetter()}</Text>
+                )}
               </View>
-            )}
-            <TouchableOpacity style={styles.editAvatarButton}>
-              <Icon name="camera-alt" size={20} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Form Fields */}
-          <View style={styles.formContainer}>
-            {/* Full Name */}
-            <CustomTextInput
-              label="Full Name *"
-              value={formData.userName}
-              onChangeText={(value) => handleInputChange('userName', value)}
-              placeholder="Enter your full name"
-              maxLength={50}
-            />
-
-            {/* Mobile Number */}
-            <View style={styles.phoneContainer}>
-              <View style={styles.countryCodeContainer}>
-                <Text style={styles.countryCodeText}>
-                  {formData.callingCode}
-                </Text>
-              </View>
-              <CustomTextInput
-                value={formData.mobileNo}
-                onChangeText={(value) => handleInputChange('mobileNo', value)}
-                placeholder="Mobile Number"
-                maxLength={15}
-                keyboardType="numeric"
-                style={{ flex: 1, marginLeft: 10 }}
-              />
             </View>
 
-            {/* Email */}
-            <CustomTextInput
-              label="Email"
-              value={formData.userEmail}
-              onChangeText={(value) => handleInputChange('userEmail', value)}
-              placeholder="Enter your email"
-              maxLength={100}
-              keyboardType="email-address"
-            />
+            {/* Form Fields */}
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
 
-            {/* Date of Birth */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Date of Birth</Text>
+              {/* Full Name */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  value={formData.userName}
+                  onChangeText={(value) => handleInputChange('userName', value)}
+                  placeholder="Full Name"
+                  placeholderTextColor="#999"
+                  maxLength={50}
+                />
+              </View>
+
+              {/* Mobile Number with Country Code */}
+              <View style={styles.phoneContainer}>
+                <View style={styles.countryCodeContainer}>
+                  <Text style={styles.countryCodeText}>
+                    {formData.callingCode}
+                  </Text>
+                </View>
+                <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.mobileNo}
+                    onChangeText={(value) => handleInputChange('mobileNo', value)}
+                    placeholder="Mobile Number"
+                    placeholderTextColor="#999"
+                    maxLength={15}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  value={formData.userEmail}
+                  onChangeText={(value) => handleInputChange('userEmail', value)}
+                  placeholder="Email Address"
+                  placeholderTextColor="#999"
+                  maxLength={100}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              {/* Date of Birth */}
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setIsDatePickerVisible(true)}
               >
-                <Text style={[
-                  styles.dateButtonText,
-                  !formData.dateOfBirth && styles.placeholderText
-                ]}>
-                  {formData.dateOfBirth || 'Select Date of Birth'}
-                </Text>
-                <Icon name="event" size={20} color="#333" />
+                                 <View style={styles.dateButtonContent}>
+                   <Text style={[
+                     styles.dateButtonText,
+                     !formData.dateOfBirth && styles.placeholderText
+                   ]}>
+                     {formData.dateOfBirth || 'Select Date of Birth'}
+                   </Text>
+                   <SvgIcons name="calendar-outline" color="#ffffff" size={20} />
+                 </View>
               </TouchableOpacity>
+
+              {/* Gender Dropdown */}
+              <View style={styles.dropdownContainer}>
+                <Text style={styles.dropdownLabel}>Gender</Text>
+                <View style={styles.dropdownWrapper}>
+                  {genderOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.dropdownOption,
+                        formData.gender === option.value && styles.dropdownOptionSelected
+                      ]}
+                      onPress={() => handleInputChange('gender', option.value)}
+                    >
+                      <Text style={[
+                        styles.dropdownOptionText,
+                        formData.gender === option.value && styles.dropdownOptionTextSelected
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+                             {/* Referral Code - Temporarily disabled due to API validation issues */}
+               {/* <View style={styles.inputContainer}>
+                 <TextInput
+                   style={styles.textInput}
+                   value={formData.referralCode}
+                   onChangeText={(value) => handleInputChange('referralCode', value)}
+                   placeholder="Referral Code (Optional)"
+                   placeholderTextColor="#999"
+                   maxLength={20}
+                 />
+               </View> */}
             </View>
+          </ScrollView>
 
-            {/* Gender */}
-            <CustomDropdown
-              data={genderOptions}
-              value={formData.gender}
-              onValueChange={(value) => handleInputChange('gender', value)}
-              placeholder="Select Gender"
-            />
-
-            {/* Referral Code */}
-            <CustomTextInput
-              label="Referral Code"
-              value={formData.referralCode}
-              onChangeText={(value) => handleInputChange('referralCode', value)}
-              placeholder="Enter referral code"
-              maxLength={20}
-            />
-
-            {/* Update Button */}
-            <CustomButton
-              title="Update Profile"
+          {/* Update Button */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.updateButton, loading && styles.buttonDisabled]}
               onPress={handleUpdateProfile}
-              loading={loading}
               disabled={loading}
-              style={styles.updateButton}
-            />
+            >
+              <LinearGradient
+                colors={loading ? ['#ccc', '#999'] : ['#E9743A', '#CB2D4D']}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.buttonText}>Update Profile</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </TouchableOpacity>
 
         {/* Date Picker Modal */}
         <DateTimePicker
@@ -592,158 +601,162 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  contentContainer: {
+    flex: 1,
+    padding: isLargeDevice ? width * 0.02 : width * 0.04,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingBottom: isLargeDevice ? width * 0.05 : width * 0.1,
   },
-  avatarContainer: {
+  profileSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: isLargeDevice ? width * 0.04 : width * 0.06,
     position: 'relative',
   },
-  avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  profileContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
+    width: isLargeDevice ? width * 0.12 : width * 0.25,
+    height: isLargeDevice ? width * 0.12 : width * 0.25,
+    borderWidth: 4,
+    borderRadius: 999,
+    borderColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  avatarText: {
-    fontSize: 40,
+  profileImage: {
+    width: isLargeDevice ? width * 0.12 : width * 0.25,
+    height: isLargeDevice ? width * 0.12 : width * 0.25,
+    borderRadius: 999,
+  },
+  profileInitial: {
+    fontSize: isLargeDevice ? 40 : 60,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
   },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E9743A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+  formSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: width * 0.02,
+    padding: isLargeDevice ? width * 0.03 : width * 0.04,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
   },
-  formContainer: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 15,
-    padding: 20,
+  sectionTitle: {
+    fontSize: isLargeDevice ? 16 : 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
+    textAlign: 'center',
   },
   inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  textInputWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 10,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: width * 0.015,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  disabledInput: {
-    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   textInput: {
     fontSize: 16,
-    color: '#333',
+    color: '#ffffff',
   },
   phoneContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
   },
   countryCodeContainer: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: width * 0.015,
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   countryCodeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffff',
   },
   dateButton: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: width * 0.015,
     paddingHorizontal: 15,
     paddingVertical: 12,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dateButtonContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   dateButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: '#ffffff',
+    flex: 1,
   },
   placeholderText: {
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   dropdownContainer: {
-    marginBottom: 20,
+    marginBottom: isLargeDevice ? width * 0.02 : width * 0.04,
+  },
+  dropdownLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 8,
   },
   dropdownWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: width * 0.015,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownOptions: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 10,
-    marginTop: 5,
-    maxHeight: 150,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
   },
   dropdownOption: {
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   dropdownOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: '#ffffff',
   },
-  button: {
-    borderRadius: 10,
+  dropdownOptionTextSelected: {
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    paddingHorizontal: isLargeDevice ? width * 0.02 : width * 0.04,
+    paddingBottom: isLargeDevice ? width * 0.02 : width * 0.04,
+  },
+  updateButton: {
+    borderRadius: width * 0.015,
     overflow: 'hidden',
-    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -756,9 +769,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-  },
-  updateButton: {
-    marginTop: 30,
   },
 });
 
