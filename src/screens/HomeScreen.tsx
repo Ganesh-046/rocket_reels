@@ -11,7 +11,6 @@ import {
   Animated,
   InteractionManager,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -792,30 +791,6 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     navigation.navigate('MovieList', { title, data });
   };
 
-  // Debug function
-  const showDebugInfo = () => {
-    const debugInfo = {
-      isSelected,
-      isHide,
-      currentBannerIndex,
-      bannerDataLength: banner_Data.length,
-      contentListLength: contentListData?.data?.result?.length || 0,
-      topContentLength: topContentData?.data?.top?.length || 0,
-      latestContentLength: latestContentData?.data?.contentList?.length || 0,
-      errors: Object.keys(errors),
-      loadingStates,
-      retryCount,
-    };
-
-    console.log('[HOME SCREEN DEBUG] Current State:', debugInfo);
-    
-    Alert.alert(
-      '🔍 Home Screen Debug',
-      `Selected: ${isSelected}\nBanner Index: ${currentBannerIndex}\nBanner Count: ${banner_Data.length}\nContent Count: ${contentListData?.data?.result?.length || 0}\nErrors: ${Object.keys(errors).length}`,
-      [{ text: 'OK' }]
-    );
-  };
-
   // Create filtered data arrays to exclude exclusive content from regular sections
   const filteredContentData = useMemo(() => {
     if (!contentListData?.data?.result) return {};
@@ -974,36 +949,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   }
 
   return (
-    <>
-      {/* <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} /> */}
-      
-      {/* Debug Button */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          top: 50,
-          right: 20,
-          zIndex: 1000,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          backgroundColor: '#2ed573',
-          borderRadius: 8,
-        }}
-        onPress={showDebugInfo}
-      >
-        <Text style={{
-          fontSize: 12,
-          color: '#ffffff',
-          fontWeight: 'bold',
-        }}>
-          🔍 Debug
-        </Text>
-      </TouchableOpacity>
-      
-      <LinearGradient 
-        style={style.container} 
-        colors={gradientColorsArray.filter(color => color && typeof color === 'string')}
-      >
+    <LinearGradient style={style.container} colors={gradientColorsArray}>
       <View style={[style.container, {
         marginTop: insets.top,
         marginBottom: isHide ? tabBarHeight : 0
@@ -1304,7 +1250,6 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
         </Animated.ScrollView>
       </View>
     </LinearGradient>
-    </>
   );
 });
 

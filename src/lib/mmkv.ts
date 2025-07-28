@@ -56,8 +56,6 @@ export const STORAGE_KEYS = {
   BANNERS: 'banners',
 } as const;
 
-
-
 // MMKV Storage Class
 class MMKVStorage {
   // User Data
@@ -94,17 +92,7 @@ class MMKVStorage {
   static getToken(): string | null {
     try {
       const storage = getStorage();
-      const token = storage.getString(STORAGE_KEYS.TOKEN) || null;
-      if (token) {
-        console.log('🔐 MMKV - Token retrieved:', {
-          tokenLength: token.length,
-          tokenPreview: token.substring(0, 20) + '...',
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        console.log('🔐 MMKV - No token found in storage');
-      }
-      return token;
+      return storage.getString(STORAGE_KEYS.TOKEN) || null;
     } catch (error) {
       console.warn('[MMKV] Failed to get token:', error);
       return null;
@@ -115,11 +103,6 @@ class MMKVStorage {
     try {
       const storage = getStorage();
       storage.set(STORAGE_KEYS.TOKEN, token);
-      console.log('🔐 MMKV - Token stored:', {
-        tokenLength: token.length,
-        tokenPreview: token.substring(0, 20) + '...',
-        timestamp: new Date().toISOString()
-      });
     } catch (error) {
       console.warn('[MMKV] Failed to set token:', error);
     }
@@ -129,7 +112,6 @@ class MMKVStorage {
     try {
       const storage = getStorage();
       storage.delete(STORAGE_KEYS.TOKEN);
-      console.log('🗑️ MMKV - Token removed from storage');
     } catch (error) {
       console.warn('[MMKV] Failed to remove token:', error);
     }

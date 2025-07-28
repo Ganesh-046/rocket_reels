@@ -29,7 +29,7 @@ import { PressableButton } from '../../../components/Button';
 import { SvgIcons } from '../../../components/common/SvgIcons';
 
 // Auth Store
-import { useAuthStore, useAuthToken, useAuthUser } from '../../../store/auth.store';
+import { useAuthStore, useAuthUser } from '../../../store/auth.store';
 
 // MMKV Storage
 import MMKVStorage from '../../../lib/mmkv';
@@ -67,11 +67,9 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const tabBarHeight = useBottomTabBarHeight();
   const [isHide, setIsHide] = useState(false);
   const [familySafeToggle, setFamilySafeToggle] = useState(false);
-
+  
   // Get user data from auth store
   const user = useAuthUser();
-
-  console.log('token', useAuthToken());
   const { logout } = useAuthStore();
 
   // State for API data
@@ -79,7 +77,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [balanceData, setBalanceData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
+  
   // State for invitation modal
   const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false);
   const [isCopySuccess, setIsCopySuccess] = useState(false);
@@ -152,7 +150,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       const authData = MMKVStorage.get('auth-data');
       const token = MMKVStorage.getToken();
       const user = MMKVStorage.getUser();
-
+      
       console.log('🔍 Auth Status Check:', {
         hasAuthData: !!authData,
         hasToken: !!token,
@@ -161,7 +159,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
         userId: user?._id || 'none',
         userName: user?.userName || 'none',
       });
-
+      
       return { authData, token, user };
     } catch (error) {
       console.error('❌ Failed to check auth status:', error);
@@ -198,7 +196,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       console.log('🔍 Fetching user profile for:', userId);
       const response = await apiService.getUserProfile(userId);
       console.log('📱 User profile response:', response);
-
+      
       if (response.status === 200 && response.data) {
         setUserProfile(response.data);
         saveProfileToMMKV(response.data);
@@ -229,7 +227,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       console.log('💰 Fetching balance for:', userId);
       const response = await apiService.getBalance(userId);
       console.log('💳 Balance response:', response);
-
+      
       if (response.status === 200 && response.data) {
         setBalanceData(response.data);
         saveBalanceToMMKV(response.data);
@@ -262,9 +260,9 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     try {
       const currentReferralCode = userProfile?.referralCode || 'N/A';
       const message = `Join Rocket Reels and earn coins! Use my referral code: ${currentReferralCode}\n\nDownload the app: https://rocketreels.com/download`;
-
+      
       const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
-
+      
       // Check if WhatsApp is installed
       const canOpen = await Linking.canOpenURL(whatsappUrl);
       if (canOpen) {
@@ -286,7 +284,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     try {
       const currentReferralCode = userProfile?.referralCode || 'N/A';
       const message = `Join Rocket Reels and earn coins! Use my referral code: ${currentReferralCode}\n\nDownload the app: https://rocketreels.com/download`;
-
+      
       await Share.share({
         message,
         title: 'Join Rocket Reels',
@@ -302,12 +300,12 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       const currentReferralCode = userProfile?.referralCode || 'N/A';
       await Clipboard.setString(currentReferralCode);
       setIsCopySuccess(true);
-
+      
       // Reset copy success after 2 seconds
       setTimeout(() => {
         setIsCopySuccess(false);
       }, 2000);
-
+      
       Alert.alert('Success', 'Referral code copied to clipboard!');
     } catch (error) {
       console.error('Copy referral code error:', error);
@@ -323,10 +321,10 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       setRefreshing(false);
       return;
     }
-
+    
     setRefreshing(true);
     console.log('🔄 Refreshing profile data for user:', userId);
-
+    
     try {
       await Promise.all([
         getUserProfile(userId, true), // Force refresh
@@ -342,13 +340,13 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   // Load cached data immediately on mount (regardless of auth state)
   useEffect(() => {
     console.log('🚀 Component mounted - loading cached data');
-
+    
     // Check auth status first
     const authStatus = checkAuthStatus();
-
+    
     const cachedProfile = loadProfileFromMMKV();
     const cachedBalance = loadBalanceFromMMKV();
-
+    
     if (cachedProfile) {
       setUserProfile(cachedProfile);
       console.log('📱 Cached profile loaded on mount');
@@ -443,7 +441,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
       case 'Terms & Conditions':
       case 'Contact Us':
         // Navigate to web view for policy pages
-        navigation.navigate('WebView', {
+        navigation.navigate('WebView', { 
           title: item.name,
           url: `https://rocketreels.com/${item.name.toLowerCase().replace(/\s+/g, '-')}`
         });
@@ -474,7 +472,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
 
   const getIconComponent = (iconName: string) => {
     const iconSize = isLargeDevice ? width * 0.02 : width * 0.04;
-
+    
     const iconMap: { [key: string]: React.ReactNode } = {
       invite: <MaterialCommunityIcons name="email-outline" size={iconSize} color="#ffffff" />,
       bookmark: <Icon name="bookmark-border" size={iconSize} color="#ffffff" />,
@@ -513,10 +511,10 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const userEmail = userProfile?.userEmail || user?.userEmail || 'No email';
   const referralCode = userProfile?.referralCode || 'N/A';
   const firstLetter = userName?.charAt(0)?.toUpperCase() || 'G';
-
+  
   // Check if user is logged in
   const isUserLoggedIn = !!user;
-
+  
   // Debug logging for user data
   console.log('👤 Profile Screen - User Data:', {
     userFromStore: user,
@@ -526,19 +524,11 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     timestamp: new Date().toISOString(),
   });
   
-  // Debug VIP section visibility
-  console.log('🎯 VIP Section Debug:', {
-    userProfileExists: !!userProfile,
-    userProfileData: userProfile,
-    isSubscriber: userProfile?.isSubscriber,
-    planDetails: userProfile?.planDetails,
-  });
-
   // Handle balance data structure - check for coinsQuantity structure
-  const balance = balanceData?.coinsQuantity?.totalCoins ||
-    balanceData?.balance ||
-    balanceData?.totalCoins ||
-    0;
+  const balance = balanceData?.coinsQuantity?.totalCoins || 
+                 balanceData?.balance || 
+                 balanceData?.totalCoins || 
+                 0;
 
   // Menu data with real user data
   const menuData: MenuSection[] = [
@@ -687,8 +677,8 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
             <View style={styles.profileInfo}>
               <View style={styles.profileImage}>
                 {(user as any)?.profilePicture ? (
-                  <Image
-                    source={{ uri: (user as any).profilePicture }}
+                  <Image 
+                    source={{ uri: (user as any).profilePicture }} 
                     style={styles.profileImageStyle}
                   />
                 ) : (
@@ -706,14 +696,14 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
               </PressableButton>
             ) : (
               <PressableButton style={styles.btnContainer} onPress={() => navigation.navigate('Auth')}>
-                <LinearGradient
+                <LinearGradient 
                   colors={['#E9743A', '#CB2D4D']}
-                  style={{
-                    padding: isLargeDevice ? width * .01 : width * .02,
-                    paddingHorizontal: isLargeDevice ? width * .025 : width * .05,
-                    justifyContent: 'center',
-                    borderRadius: isLargeDevice ? width * .015 : width * .03,
-                    alignItems: 'center'
+                  style={{ 
+                    padding: isLargeDevice ? width * .01 : width * .02, 
+                    paddingHorizontal: isLargeDevice ? width * .025 : width * .05, 
+                    justifyContent: 'center', 
+                    borderRadius: isLargeDevice ? width * .015 : width * .03, 
+                    alignItems: 'center' 
                   }}
                 >
                   <Text style={styles.heading}>
@@ -724,108 +714,124 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
             )}
           </View>
 
-                    {/* VIP Member Section */}
-          <View style={styles.vipCard}>
-            <LinearGradient style={styles.vipGradient} colors={["#A07A64", "#5E4536"]}>
-              <View style={styles.vipHeader}>
-                <View style={styles.vipTextContainer}>
-                  <Text style={styles.vipTitle}>
-                    {userProfile && userProfile?.isSubscriber ? 'Active Member' : `Become a VIP Member`}
-                  </Text>
-                  <Text style={styles.vipSubtitle}>
-                    Enjoy all benefits
-                  </Text>
+          <View style={styles.contentContainer}>
+            {/* VIP Member Section */}
+            <View style={styles.vipCard}>
+              <LinearGradient
+                colors={["#A07A64", "#5E4536"]}
+                style={styles.vipGradient}
+              >
+                <View style={styles.vipHeader}>
+                  <View style={styles.vipTextContainer}>
+                    <Text style={styles.vipTitle}>Become a VIP Member</Text>
+                    <Text style={styles.vipSubtitle}>Enjoy all benefits</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.goButton}
+                    onPress={() => navigation.navigate('Subscription')}
+                  >
+                    <LinearGradient
+                      colors={['#E9743A', '#CB2D4D']}
+                      style={styles.goButtonGradient}
+                    >
+                      <Text style={styles.goButtonText}>GO</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
-                <PressableButton 
-                  disabled={userProfile?.isSubscriber} 
-                  style={styles.goButton} 
-                  onPress={() => navigation.navigate('Subscription')}
-                >
-                  <LinearGradient style={styles.goButtonGradient} colors={['#E9743A', '#CB2D4D']}>
-                    <Text style={styles.goButtonText}>
-                      {userProfile && userProfile?.isSubscriber ? userProfile?.planDetails && userProfile?.planDetails?.planName.split("_")[0]?.toUpperCase() || '' : 'GO'}
-                    </Text>
-                  </LinearGradient>
-                </PressableButton>
-              </View>
-              <View style={styles.vipBenefits}>
-                {[{ icon: 'unlimited', offer: 'Unlimited Viewing' }, { icon: 'hd', offer: 'HD videos' }, { icon: 'new-ads', offer: 'Ad free videos' }, { icon: 'community', offer: 'VIP Community' }].reduce((rows: { icon: string; offer: string }[][], item, index) => {
-                  if (index % 2 === 0) {
-                    rows.push([item]);
-                  } else {
-                    rows[rows.length - 1].push(item);
-                  }
-                  return rows;
-                }, [])
-                  .map((row, rowIndex) => (
+                <View style={styles.vipBenefits}>
+                  {[
+                    { icon: 'unlimited', text: 'Unlimited Viewing' },
+                    { icon: 'hd', text: 'HD videos' },
+                    { icon: 'new-ads', text: 'Ad free videos' },
+                    { icon: 'community', text: 'VIP Community' }
+                  ].reduce<{ icon: string; text: string }[][]>((rows, item, index) => {
+                    if (index % 2 === 0) {
+                      rows.push([item]);
+                    } else {
+                      rows[rows.length - 1].push(item);
+                    }
+                    return rows;
+                  }, []).map((row, rowIndex) => (
                     <View key={rowIndex} style={styles.benefitsRow}>
-                      {row.map((item: { icon: string; offer: string }, index) => (
-                        <View style={styles.benefitItem} key={index}>
+                      {row.map((item, index) => (
+                        <View key={index} style={styles.benefitItem}>
                           <View style={styles.benefitIconContainer}>
-                            <SvgIcons name={item.icon} size={isLargeDevice ? 16 : 20} color="#ffffff" />
+                            {item.icon === 'unlimited' ? (
+                              <MaterialCommunityIcons name="infinity" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : item.icon === 'hd' ? (
+                              <Icon name="hd" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : item.icon === 'new-ads' ? (
+                              <MaterialCommunityIcons name="block-helper" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            ) : (
+                              <MaterialCommunityIcons name="account-group" size={isLargeDevice ? width * 0.02 : width * 0.04} color="#ffffff" />
+                            )}
                           </View>
-                          <Text style={styles.benefitText}>
-                            {item.offer}
-                          </Text>
+                          <Text style={styles.benefitText}>{item.text}</Text>
                         </View>
                       ))}
-                    </View>))}
-              </View>
-            </LinearGradient>
-          </View>
-
-          {/* Wallet Section */}
-          <PressableButton onPress={() => navigation.navigate('MyWallet')} style={styles.walletCard}>
-            <View style={styles.walletLeft}>
-              <View style={styles.walletBalance}>
-                <SvgIcons name={'coin'} size={isLargeDevice ? 24 : 28} color="#ffffff" />
-                <Text style={styles.balanceAmount}>
-                  {balance}
-                </Text>
-              </View>
-              <Text style={styles.walletLabel}>
-                My Wallet
-              </Text>
-            </View>
-            <PressableButton style={styles.loadNowButton} onPress={() => navigation.navigate('Refill')}>
-              <LinearGradient style={styles.loadNowGradient} colors={['#E9743A', '#CB2D4D']}>
-                <SvgIcons name={'refill'} size={isLargeDevice ? 18 : 20} color="#ffffff" />
-                <Text style={styles.loadNowText}>
-                  Load Now
-                </Text>
+                    </View>
+                  ))}
+                </View>
               </LinearGradient>
-            </PressableButton>
-          </PressableButton>
-
-          {/* Menu Sections */}
-          {menuData.map((section, sectionIndex) => (
-            <View key={sectionIndex} style={styles.menuSection}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              {section.data.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={itemIndex}
-                  style={styles.menuItem}
-                  onPress={() => handleMenuItemPress(item)}
-                >
-                  <View style={styles.menuItemLeft}>
-                    {getIconComponent(item.iconName)}
-                    <View style={styles.menuItemText}>
-                      <Text style={styles.menuItemTitle}>{item.name}</Text>
-                      <Text style={styles.menuItemDesc}>{item.desc}</Text>
-                    </View>
-                  </View>
-                  {item.name === 'Watch Family Safe Content' && (
-                    <View style={[styles.toggle, familySafeToggle && styles.toggleActive]}>
-                      <View style={[styles.toggleThumb, familySafeToggle && styles.toggleThumbActive]} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
             </View>
-          ))}
-          </ScrollView>
+
+            {/* Wallet Section */}
+            <TouchableOpacity
+              style={styles.walletCard}
+              onPress={() => navigation.navigate('MyWallet')}
+            >
+              <View style={styles.walletLeft}>
+                <View style={styles.walletBalance}>
+                  <FontAwesome5 name="coins" size={isLargeDevice ? width * 0.03 : width * 0.05} color="#ffffff" style={styles.coinIcon} />
+                  <Text style={styles.balanceAmount}>{balance}</Text>
+                </View>
+                <Text style={styles.walletLabel}>My Wallet</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.loadNowButton}
+                onPress={() => navigation.navigate('Refill')}
+              >
+                <LinearGradient
+                  colors={['#E9743A', '#CB2D4D']}
+                  style={styles.loadNowGradient}
+                >
+                  <MaterialCommunityIcons name="diamond-stone" size={isLargeDevice ? width * 0.03 : width * 0.05} color="#ffffff" style={styles.loadNowIcon} />
+                  <Text style={styles.loadNowText}>Load Now</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </TouchableOpacity>
+
+            {/* Menu Sections */}
+            {menuData.map((section, sectionIndex) => (
+              <View key={sectionIndex} style={styles.menuSection}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                {section.data.map((item, itemIndex) => (
+                  <TouchableOpacity
+                    key={itemIndex}
+                    style={styles.menuItem}
+                    onPress={() => handleMenuItemPress(item)}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      {getIconComponent(item.iconName)}
+                      <View style={styles.menuItemText}>
+                        <Text style={styles.menuItemTitle}>{item.name}</Text>
+                        <Text style={styles.menuItemDesc}>{item.desc}</Text>
+                      </View>
+                    </View>
+                    {item.name === 'Watch Family Safe Content' && (
+                      <View style={[styles.toggle, familySafeToggle && styles.toggleActive]}>
+                        <View style={[styles.toggleThumb, familySafeToggle && styles.toggleThumbActive]} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
+      {/* Invitation Modal */}
       {isInvitationModalVisible && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -879,10 +885,10 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
                     <Text style={styles.referralCodeText}>
                       {userProfile.referralCode}
                     </Text>
-                    <Icon
-                      name={isCopySuccess ? "check-circle" : "content-copy"}
-                      size={20}
-                      color="#ffffff"
+                    <Icon 
+                      name={isCopySuccess ? "check-circle" : "content-copy"} 
+                      size={20} 
+                      color="#ffffff" 
                     />
                   </TouchableOpacity>
                 )}
@@ -891,16 +897,15 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           </View>
         </View>
       )}
-       
-    </LinearGradient >
+    </LinearGradient>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingBottom: 40,
-    paddingTop: 20
+    paddingTop : 20
   },
   mainContainer: {
     flex: 1,
@@ -1233,7 +1238,7 @@ const styles = StyleSheet.create({
   toggleThumbActive: {
     alignSelf: 'flex-end',
   },
-
+  
   // Modal Styles
   modalOverlay: {
     position: 'absolute',

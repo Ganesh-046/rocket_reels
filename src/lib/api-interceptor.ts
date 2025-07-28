@@ -1,7 +1,6 @@
 import { API_CONFIG, ENDPOINTS, HTTP_METHODS, CONTENT_TYPES, ERROR_CODES, CACHE_TTL } from '../config/api';
 import { ApiResponse } from '../types/api';
 import MMKVStorage from './mmkv';
-import TokenManager from '../utils/tokenManager';
 import { Platform } from 'react-native';
 
 // Request configuration interface
@@ -126,7 +125,7 @@ class ApiInterceptor {
   ): Promise<RequestConfig> {
     const { isPublic = false, timeout = this.timeout } = options;
     const url = `${this.baseURL}${endpoint}`;
-    const token = TokenManager.getToken();
+    const token = MMKVStorage.getToken();
 
     const headers: Record<string, string> = {
       'Content-Type': CONTENT_TYPES.JSON,
@@ -141,19 +140,6 @@ class ApiInterceptor {
     // Add authorization header for private requests
     if (!isPublic && token) {
       headers['accesstoken'] = `Bearer ${token}`;
-      console.log('🔐 API Interceptor - Token added to request:', {
-        endpoint,
-        method: method.toUpperCase(),
-        tokenLength: token.length,
-        tokenPreview: token.substring(0, 20) + '...',
-        timestamp: new Date().toISOString()
-      });
-    } else if (!isPublic && !token) {
-      console.log('⚠️ API Interceptor - No token available for private request:', {
-        endpoint,
-        method: method.toUpperCase(),
-        timestamp: new Date().toISOString()
-      });
     }
 
     // Add device information
@@ -299,11 +285,8 @@ class ApiInterceptor {
   private handleUnauthorized(): void {
     // Clear auth data and redirect to login
     MMKVStorage.removeAuthData();
-    TokenManager.clearToken();
+    MMKVStorage.removeToken();
     MMKVStorage.removeUser();
-    
-    // Stop token refresh
-    TokenManager.stopAutoRefresh();
     
     // You can emit an event here to notify the app about logout
     // EventEmitter.emit('LOGOUT');
