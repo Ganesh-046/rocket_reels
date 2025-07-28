@@ -15,10 +15,10 @@ interface VideoQualityState {
 const loadInitialQuality = (): VideoQuality => {
   try {
     const saved = MMKVStorage.get('currentQuality');
-    return saved as VideoQuality || 'auto';
+    return saved as VideoQuality || '720p'; // Default to HD quality
   } catch (error) {
     console.warn('Failed to load initial video quality:', error);
-    return 'auto';
+    return '720p'; // Default to HD quality
   }
 };
 
@@ -49,15 +49,15 @@ export const useVideoQualityStore = create<VideoQualityState>((set, get) => ({
 
   // Reset to default quality
   resetQuality: () => {
-    console.log('🎬 VideoQualityStore - Resetting quality to auto');
+    console.log('🎬 VideoQualityStore - Resetting quality to HD (720p)');
     
     // Save to MMKV
     try {
-      MMKVStorage.set('currentQuality', 'auto');
+      MMKVStorage.set('currentQuality', '720p');
     } catch (error) {
       console.error('Error resetting video quality:', error);
     }
     
-    set({ currentQuality: 'auto' });
+    set({ currentQuality: '720p' });
   },
 })); 

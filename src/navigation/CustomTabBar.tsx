@@ -9,9 +9,9 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { SvgIcons } from '../components/common/SvgIcons';
 
 const { width } = Dimensions.get('window');
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
@@ -49,35 +49,7 @@ const OpacityButton: React.FC<{
   </TouchableOpacity>
 );
 
-// SvgIcons component to match first tab bar
-const SvgIcons: React.FC<{
-  name: string;
-  size: number;
-  color: string;
-  strokeWidth?: number;
-}> = ({ name, size, color, strokeWidth }) => {
-  let iconName = '';
-  switch (name) {
-    case 'home':
-      iconName = 'home-outline';
-      break;
-    case 'search':
-      iconName = 'search-outline';
-      break;
-    case 'rewards':
-      iconName = 'gift-outline';
-      break;
-    case 'profile':
-      iconName = 'person-outline';
-      break;
-    case 'shorts':
-      iconName = 'play-circle-outline';
-      break;
-    default:
-      iconName = 'ellipse-outline';
-  }
-  return <Icon name={iconName} size={size} color={color} />;
-};
+
 
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const { isLargeDevice, dimension: { width }, appFonts } = mockDeviceContext;
@@ -173,7 +145,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
         if (route.name === 'Home') {
           iconName = 'home';
         } else if (route.name === 'Discover') {
-          iconName = 'search';
+          iconName = 'forYou';
         } else if (route.name === 'Rewards') {
           iconName = 'rewards';
         } else if (route.name === 'Profile') {
@@ -236,8 +208,9 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
               >
                 <SvgIcons
                   name={iconName}
-                  size={isLargeDevice ? width * .025 : width * 0.06}
+                  size={isLargeDevice ? width * .03 : width * 0.06}
                   color={colors.PRIMARYWHITE}
+                  viewBox={undefined}
                   strokeWidth={1.5}
                 />
                 <Animated.Text
@@ -249,7 +222,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
                     opacity: tabAnim.gradientOpacity,
                   }}
                 >
-                  {route.name}
+                  {route.name === 'Discover' ? 'For You' : route.name}
                 </Animated.Text>
               </Animated.View>
             </Animated.View>

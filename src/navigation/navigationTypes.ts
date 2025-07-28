@@ -2,6 +2,9 @@ export type RootStackParamList = {
   Tabs: undefined;
   ReelDetail: any;
   Shorts: any;
+  PromoDetail: {
+    item: any;
+  };
   EpisodePlayer: {
     contentId: string;
     contentName: string;

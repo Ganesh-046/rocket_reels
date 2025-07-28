@@ -1,195 +1,81 @@
-import React, { useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
-import { theme } from '../../theme';
-import { useOptimizedFlatList } from '../../hooks/useHomeScreenOptimization';
-import Skeleton from '../Skeleton';
-
+import React from 'react';
+import { View, Text, Dimensions } from 'react-native';
+import ActivityLoader from '../common/ActivityLoader';
+import { PressableButton } from '../Button';
+import { SvgIcons } from '../common/SvgIcons.tsx';
 
 interface ContentSectionProps {
- title: string;
- data: any[];
- onSeeAll?: () => void;
- renderItem: (props: any) => React.ReactElement;
- loadingStates: any;
- style: any;
- isLargeDevice: boolean;
- appFonts: any;
- columns: number;
- colors: any;
+  title: string;
+  data: any[];
+  onSeeAll?: () => void;
+  renderItem: (props: any) => React.ReactElement;
+  loadingStates: any;
+  style: any;
+  isLargeDevice: boolean;
+  appFonts: any;
+  columns: number;
+  colors: any;
 }
 
-
-const { width } = Dimensions.get('window');
-
-
-const ContentSection: React.FC<ContentSectionProps> = ({
- title,
- data,
- onSeeAll,
- renderItem,
- loadingStates,
- style,
- isLargeDevice,
- appFonts,
- columns,
- colors,
+const ContentSection: React.FC<ContentSectionProps> = React.memo(({ 
+  title, 
+  data, 
+  onSeeAll, 
+  renderItem, 
+  loadingStates, 
+  style, 
+  isLargeDevice, 
+  appFonts, 
+  columns, 
+  colors 
 }) => {
- // Memoized optimized FlatList config
- const optimizedFlatListConfig = useOptimizedFlatList(data?.length || 0);
+  const { width } = Dimensions.get('window');
+  
+  if (!data?.length) {
+    return loadingStates.content ? (
+      <View style={style.sectionContainer}>
+        <View style={[style.directionContainer, style.sectionHeader]}>
+          <Text style={[style.heading, { textTransform: 'uppercase', fontSize: isLargeDevice ? appFonts.APP_FONT_SIZE_18 : appFonts.APP_FONT_SIZE_35 }]}> {title} </Text>
+        </View>
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <ActivityLoader />
+        </View>
+      </View>
+    ) : null;
+  }
+  
+  const newData = title === 'New Shows' ? data.slice(0, 4) : data;
+  const rows = newData.reduce((acc, item, index) => {
+    if (index % columns === 0) {
+      acc.push([item]);
+    } else {
+      acc[acc.length - 1].push(item);
+    }
+    return acc;
+  }, []);
 
-
- // Calculate item width for 2 items per row
- const itemWidth = useMemo(() => (width - 48) / 2, [width]); // 48 = padding (16) + gap between items (16)
- const itemSpacing = 16;
-
-
- // Memoized key extractor for stable keys
- const keyExtractor = useCallback((item: any, index: number) => {
-   return item.id || item._id || `item-${index}`;
- }, []);
-
-
- // Memoized render item wrapper for better performance
- const renderItemWrapper = useCallback((props: any) => {
-   return renderItem(props);
- }, [renderItem]);
-
-
- // Memoized item layout for better performance
- const getItemLayout = useCallback((data: any, index: number) => ({
-   length: itemWidth + itemSpacing,
-   offset: (itemWidth + itemSpacing) * Math.floor(index / 2),
-   index,
- }), [itemWidth, itemSpacing]);
-
-
- // Memoized section header for better performance
- const SectionHeader = useMemo(() => (
-   <View style={[style.sectionHeader, {marginBottom: 15, paddingHorizontal: 10, paddingLeft: 15}]}>
-     <Text style={style.heading}>{title}</Text>
-     {onSeeAll && (
-       <Text
-         style={[style.txt, { opacity: loadingStates?.content ? 0.5 : 1 }]}
-         onPress={onSeeAll}
-         disabled={loadingStates?.content}
-       >
-         See All
-       </Text>
-     )}
-   </View>
- ), [title, onSeeAll, style.sectionHeader, style.heading, style.txt, loadingStates?.content]);
-
-
- // Memoized column wrapper style
- const columnWrapperStyle = useMemo(() => ({
-   justifyContent: 'space-between' as const,
-   paddingHorizontal: 16,
-   marginBottom: itemSpacing
- }), [itemSpacing]);
-
-
- // Show skeleton loader when loading
- if (loadingStates?.content || loadingStates?.contentList) {
-   return (
-     <View style={style.sectionContainer}>
-       {SectionHeader}
-       <View style={styles.skeletonContainer}>
-         <FlatList
-           data={Array.from({ length: 12 }, (_, i) => ({ id: `skeleton-${i}` }))}
-           numColumns={2}
-           horizontal={true}
-           showsVerticalScrollIndicator={false}
-           renderItem={() => (
-             <View style={styles.skeletonItem}>
-               <Skeleton variant="masonry" />
-             </View>
-           )}
-           keyExtractor={(item) => item.id}
-           columnWrapperStyle={columnWrapperStyle}
-           contentContainerStyle={styles.contentContainer}
-         />
-       </View>
-     </View>
-   );
- }
-
-
- // Early return for empty data
- if (!data || data.length === 0) {
-   return (
-     <View style={style.sectionContainer}>
-       {SectionHeader}
-       <View style={styles.emptyContainer}>
-         <Text style={[styles.emptyText, { color: colors.PRIMARYWHITE }]}>
-           No {title.toLowerCase()} available
-         </Text>
-       </View>
-     </View>
-   );
- }
-
-
- return (
-   <View style={style.sectionContainer}>
-     {SectionHeader}
-     <FlatList
-       data={data}
-       numColumns={2} // Show 2 items per row
-       horizontal={false} // Vertical layout
-       renderItem={renderItemWrapper}
-       // Performance optimizations
-       {...optimizedFlatListConfig}
-       // Better rendering
-       initialNumToRender={isLargeDevice ? 8 : 6} // Show more items on large devices
-       maxToRenderPerBatch={isLargeDevice ? 8 : 6} // Render more items per batch on large devices
-       windowSize={10} // Keep 10 items in memory
-       removeClippedSubviews={true}
-       // Layout optimizations
-       columnWrapperStyle={columnWrapperStyle}
-       contentContainerStyle={styles.contentContainer}
-       // Enhanced user experience
-       showsVerticalScrollIndicator={false}
-       // Smooth scrolling
-       scrollEventThrottle={16}
-       // Memory optimization
-       maintainVisibleContentPosition={{
-         minIndexForVisible: 0,
-         autoscrollToTopThreshold: 10,
-       }}
-       // Accessibility
-       accessibilityLabel={`${title} content grid`}
-       accessibilityHint={`Grid layout with ${columns} items per row`}
-     />
-   </View>
- );
-};
-
-
-const styles = StyleSheet.create({
- contentContainer: {
-   paddingBottom: 10,
-   paddingRight: 10,
- },
- skeletonContainer: {
-   paddingVertical: 10,
- },
- skeletonItem: {
-   flex: 1,
-   marginHorizontal: 5,
-   marginBottom: 10,
- },
- emptyContainer: {
-   height: 120,
-   justifyContent: 'center',
-   alignItems: 'center',
-   paddingHorizontal: 20,
- },
- emptyText: {
-   fontSize: 14,
-   opacity: 0.7,
-   textAlign: 'center',
- },
+  return (
+    <View style={style.sectionContainer}>
+      <View style={[style.directionContainer, style.sectionHeader]}>
+        <Text style={[style.heading, { textTransform: 'uppercase', fontSize: isLargeDevice ? appFonts.APP_FONT_SIZE_18 : appFonts.APP_FONT_SIZE_35 }]}> {title} </Text>
+        {onSeeAll && data.length >= newData.length && (
+          <PressableButton
+            onPress={onSeeAll}
+            style={style.seeMoreButton}
+            disabled={loadingStates.content}
+          >
+            <Text style={[style.txt, { opacity: loadingStates.content ? 0.5 : 1 }]}>See More</Text>
+            <SvgIcons name={'arrow-right'} color={colors.PRIMARYWHITEFOUR} size={isLargeDevice ? 20 : 16} viewBox="0 0 64 64" strokeWidth={1.5} />
+          </PressableButton>
+        )}
+      </View>
+      {rows.map((row: any[], rowIndex: number) => (
+        <View key={`${title}-row-${rowIndex}`} style={[style.directionContainer, { justifyContent: 'center', flex: 0, marginBottom: width * .01 }]}> 
+          {row.map((item: any, index: number) => renderItem({ item, index }))}
+        </View>
+      ))}
+    </View>
+  );
 });
-
 
 export default ContentSection; 

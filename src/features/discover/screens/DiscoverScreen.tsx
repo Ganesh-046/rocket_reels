@@ -10,7 +10,7 @@ import {
   InteractionManager,
   Text,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import LinearGradient from 'react-native-linear-gradient';
@@ -23,7 +23,7 @@ import useThemedStyles from '../../../hooks/useThemedStyles';
 // Components
 import ActivityLoader from '../../../components/common/ActivityLoader';
 import EmptyMessage from '../../../components/common/EmptyMessage';
-import VideoPlayer from '../../../components/VideoPlayer/EnhancedVideoPlayer';
+import TrailerVideoPlayer from '../../../components/VideoPlayer/TrailerVideoPlayer';
 
 // Constants
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -48,35 +48,6 @@ const createSafeGradientColors = (colors: any) => {
   ].filter(color => color && typeof color === 'string');
 };
 
-// Utility function to process image URLs
-const processImageUrls = (item: any) => {
-  const processedItem = { ...item };
-  
-  // Process image fields with CDN prefix
-  if (item.image && typeof item.image === 'string' && item.image.trim() !== '' && !item.image.startsWith('http')) {
-    processedItem.image = `https://d1cuox40kar1pw.cloudfront.net/${item.image}`;
-  }
-  
-  if (item.imageUri && typeof item.imageUri === 'string' && item.imageUri.trim() !== '' && !item.imageUri.startsWith('http')) {
-    processedItem.imageUri = `https://d1cuox40kar1pw.cloudfront.net/${item.imageUri}`;
-  }
-  
-  if (item.posterImage && typeof item.posterImage === 'string' && item.posterImage.trim() !== '' && !item.posterImage.startsWith('http')) {
-    processedItem.posterImage = `https://d1cuox40kar1pw.cloudfront.net/${item.posterImage}`;
-  }
-  
-  if (item.backdropImage && typeof item.backdropImage === 'string' && item.backdropImage.trim() !== '' && !item.backdropImage.startsWith('http')) {
-    processedItem.backdropImage = `https://d1cuox40kar1pw.cloudfront.net/${item.backdropImage}`;
-  }
-  
-  // Process video URL if needed
-  if (item.videoUrl && typeof item.videoUrl === 'string' && item.videoUrl.trim() !== '' && !item.videoUrl.startsWith('http')) {
-    processedItem.videoUrl = `https://d1cuox40kar1pw.cloudfront.net/${item.videoUrl}`;
-  }
-  
-  return processedItem;
-};
-
 interface DiscoverScreenProps {
   navigation: any;
 }
@@ -91,15 +62,17 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
-  // Refs
+  // Refs - matching ForYouScreen.js pattern
   const flatListRef = useRef<FlatList<any>>(null);
   const controllerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoadingMore = useRef(false);
   const hasInitialized = useRef(false);
+  const isScrolling = useRef(false);
+  const apiCallTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastApiCallRef = useRef<Record<string, number>>({});
+  const apiCallCountRef = useRef(0);
 
-  // Debug flag - set to false to use real API data
-  const USE_DUMMY_DATA = false;
-
-  // State management
+  // State management - matching ForYouScreen.js pattern
   const [state, setState] = useState({
     playPause: true,
     currentIndex: 0,
@@ -107,22 +80,37 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     duration: 0,
     progress: 0,
     loading: false,
-    isScrolling: false,
-    scrollVelocity: 0,
   });
 
-  // Calculate screen dimensions
+  // Local refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Calculate screen dimensions - Full screen height for trailer videos
   const screenDimensions = useMemo(() => {
-    // Use full available height for both platforms
-    const availableHeight = screenHeight - insets.top - tabBarHeight - insets.bottom;
+    const screenHeight = Dimensions.get('screen').height;
+    const statusBarHeight = StatusBar.currentHeight || 0;
+    
+    // Use full screen height minus status bar for videos
+    const fullScreenHeight = screenHeight - statusBarHeight;
+    
     return {
-      platformHeight: availableHeight,
-      marginBottom: tabBarHeight + insets.bottom,
+      platformHeight: fullScreenHeight,
+      marginBottom: 0, // No margin bottom for full screen
       insets
     };
-  }, [screenWidth, screenHeight, insets, tabBarHeight]);
+  }, [screenHeight, insets]);
 
-  // API Queries - Fixed to use correct parameters
+  // Create a stable setState function with better state management
+  const updateState = useCallback((updater: any) => {
+    console.log('🎯 DiscoverScreen updateState called:', updater);
+    setState(prevState => {
+      const newState = typeof updater === 'function' ? updater(prevState) : updater;
+      console.log('🎯 DiscoverScreen state update:', { prevState, newState });
+      return { ...prevState, ...newState };
+    });
+  }, []);
+
+  // API Queries
   const {
     data: trailerData,
     isLoading: trailerLoading,
@@ -130,29 +118,8 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     refetch: refetchTrailers,
   } = useTrailerList({ adult: true, page: 1 });
 
-  // Process trailer data based on actual API response structure
+  // Process trailer data - convert to episode format for SimpleInstagramVideoPlayer
   const processedTrailerData = useMemo(() => {
-
-    // Check if we should use dummy data (for debugging only)
-    if (USE_DUMMY_DATA) {
-      return [
-        {
-          id: 'dummy-1',
-          title: 'Test Trailer 1',
-          description: 'This is a test trailer for debugging',
-          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-          thumbnail: 'https://picsum.photos/400/600?random=1',
-          likes: 100,
-          comments: 50,
-          shares: 25,
-          author: 'Test Studio',
-          duration: 15,
-          views: '1K',
-        }
-      ];
-    }
-
-    // Based on cURL response, trailer API returns: data.trailers array
     const trailerItems = trailerData?.data?.trailers;
     
     if (!trailerItems || !Array.isArray(trailerItems) || trailerItems.length === 0) {
@@ -161,181 +128,293 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
 
     const processed = trailerItems
       .map((item: any, index: number) => {
-      const processedItem = processImageUrls(item);
-      
-      // Extract video URL from the complex trailerUrl structure
-      let videoUrl = '';
-      if (item.trailerUrl?.media?.video_urls?.master) {
-        videoUrl = `https://k9456pbd.rocketreel.co.in/${item.trailerUrl.media.video_urls.master}`;
-      } else if (item.trailerUrl?.media?.video_urls?.['720p']) {
-        videoUrl = `https://k9456pbd.rocketreel.co.in/${item.trailerUrl.media.video_urls['720p']}`;
-      } else if (item.trailerUrl?.video) {
-        videoUrl = `https://k9456pbd.rocketreel.co.in/${item.trailerUrl.video}`;
-      }
+        // Extract video URL from the complex trailerUrl structure - Prioritize HD
+        let videoUrl = '';
+        let videoUrls: any = {};
+        
+        // Get all available video URLs
+        if (item.trailerUrl?.media?.video_urls) {
+          videoUrls = item.trailerUrl.media.video_urls;
+        }
+        
+        // Prioritize HD qualities in order: 1080p > 720p > master > 480p > 360p
+        if (videoUrls['1080p']) {
+          videoUrl = videoUrls['1080p'];
+        } else if (videoUrls['720p']) {
+          videoUrl = videoUrls['720p'];
+        } else if (videoUrls.master) {
+          videoUrl = videoUrls.master;
+        } else if (videoUrls['480p']) {
+          videoUrl = videoUrls['480p'];
+        } else if (videoUrls['360p']) {
+          videoUrl = videoUrls['360p'];
+        } else if (item.trailerUrl?.video) {
+          videoUrl = item.trailerUrl.video;
+        }
 
-      // Extract thumbnail from the complex structure
-      let thumbnail = '';
-      if (item.trailerUrl?.media?.thumbnail) {
-        thumbnail = `https://k9456pbd.rocketreel.co.in/${item.trailerUrl.media.thumbnail}`;
-      } else if (item.backdropImage) {
-        thumbnail = `https://k9456pbd.rocketreel.co.in/${item.backdropImage}`;
-      }
+        // Extract thumbnail
+        let thumbnail = '';
+        if (item.trailerUrl?.media?.thumbnail) {
+          thumbnail = item.trailerUrl.media.thumbnail;
+        } else if (item.backdropImage) {
+          thumbnail = item.backdropImage;
+        }
 
-      // Only include items with valid video URLs
-      if (!videoUrl) {
-        return null;
-      }
+        // Only include items with valid video URLs
+        if (!videoUrl) {
+          return null;
+        }
+        
+        // Log HD trailer detection
+        const isHD = videoUrl.includes('1080p') || videoUrl.includes('720p');
+        if (isHD) {
+          console.log('🎬 HD Trailer detected:', {
+            title: item.title,
+            quality: videoUrl.includes('1080p') ? '1080p' : '720p',
+            url: videoUrl
+          });
+        }
 
-      return {
-        ...processedItem,
-        id: item._id || `trailer-${index}`,
-        stableIndex: index,
-        // Map API fields to our expected structure
-        title: item.title || 'Untitled',
-        description: item.description || '',
-        videoUrl: videoUrl,
-        thumbnail: thumbnail || 'https://picsum.photos/400/600',
-        likes: item.favourites || 0,
-        comments: 0, // API doesn't provide comments
-        shares: 0, // API doesn't provide shares
-        author: item.targetAudience?.name || 'Unknown',
-        duration: 15, // Default duration for trailers
-        views: '1K', // Default views
-        // Additional API fields
-        genres: item.genres || [],
-        releasingDate: item.releasingDate,
-        targetAudience: item.targetAudience,
-        trailerUrl: item.trailerUrl,
-      };
-    })
-    .filter(Boolean); // Remove null items
-
-
+        // Convert to episode format for SimpleInstagramVideoPlayer
+        return {
+          _id: item._id || `trailer-${index}`,
+          title: item.title || 'Untitled',
+          description: item.description || '',
+          video_urls: {
+            master: videoUrl,
+            '1080p': videoUrls['1080p'] || videoUrl,
+            '720p': videoUrls['720p'] || videoUrl,
+            '480p': videoUrls['480p'] || videoUrl,
+            '360p': videoUrls['360p'] || videoUrl,
+          },
+          video_url: videoUrl,
+          thumbnail: thumbnail,
+          backdropImage: item.backdropImage,
+          // Additional fields for UI
+          likes: item.favourites || 0,
+          author: item.targetAudience?.name || 'Unknown',
+          duration: 15,
+          views: '1K',
+          genres: item.genres || [],
+          releasingDate: item.releasingDate,
+          targetAudience: item.targetAudience,
+          trailerUrl: item.trailerUrl,
+        };
+      })
+      .filter(Boolean);
 
     return processed;
   }, [trailerData, trailerLoading, trailerError]);
 
-  // Initialize data
+  // Initialize data - matching ForYouScreen.js pattern
   useEffect(() => {
-    if (!hasInitialized.current && isFocused) {
-      InteractionManager.runAfterInteractions(async () => {
+    const initializeApp = async () => {
+      if (!hasInitialized.current && isFocused) {
+        hasInitialized.current = true;
+        
         try {
-          // Load trailer data
+          // Reset API call tracking on initialization
+          apiCallCountRef.current = 0;
+          lastApiCallRef.current = {};
+          
+          // Load trailer data first with delay to prevent rapid calls
+          await new Promise(resolve => setTimeout(resolve, 500));
           await refetchTrailers();
           
-          hasInitialized.current = true;
+          // Direct state update
+          updateState({
+            currentIndex: 0,
+            playPause: true,
+            controller: true
+          });
+          
         } catch (error) {
-          // Handle initialization error silently
+          console.log('Initialization error:', error);
         }
-      });
-    }
-  }, [isFocused, refetchTrailers]);
+      }
+    };
 
-  // Video navigation
+    initializeApp();
+    
+    // Cleanup function
+    return () => {
+      // Clear any pending timeouts
+      if (controllerTimeoutRef.current) {
+        clearTimeout(controllerTimeoutRef.current);
+        controllerTimeoutRef.current = null;
+      }
+      if (apiCallTimeoutRef.current) {
+        clearTimeout(apiCallTimeoutRef.current);
+        apiCallTimeoutRef.current = null;
+      }
+      
+      // Reset refs
+      hasInitialized.current = false;
+      isLoadingMore.current = false;
+      isScrolling.current = false;
+      apiCallCountRef.current = 0;
+      
+      // Clear flatList ref
+      if (flatListRef.current) {
+        flatListRef.current = null;
+      }
+      
+      // Reset refresh state
+      setIsRefreshing(false);
+    };
+  }, [isFocused, refetchTrailers, updateState]);
+
+  // Add proper screen focus management to pause videos when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Screen is focused - resume video if needed
+      if (isFocused && state.playPause) {
+        updateState({ playPause: true });
+      }
+
+      return () => {
+        // Screen loses focus - pause all videos
+        updateState({ playPause: false });
+        
+        // Clear any pending timeouts
+        if (controllerTimeoutRef.current) {
+          clearTimeout(controllerTimeoutRef.current);
+          controllerTimeoutRef.current = null;
+        }
+        if (apiCallTimeoutRef.current) {
+          clearTimeout(apiCallTimeoutRef.current);
+          apiCallTimeoutRef.current = null;
+        }
+        
+        // Reset scrolling state
+        isScrolling.current = false;
+        
+        console.log('DiscoverScreen: Videos paused on screen blur');
+      };
+    }, [isFocused, state.playPause, updateState])
+  );
+
+  // Video navigation - matching ForYouScreen.js pattern
   const onEnd = useCallback(() => {
-    const nextIndex = state.currentIndex + 1;
-    if (nextIndex < processedTrailerData.length) {
-      setState(prev => ({ ...prev, playPause: false, currentIndex: nextIndex }));
+    // Don't auto-advance if user is actively scrolling
+    if (isScrolling.current) return;
 
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToIndex({
+    const nextIndex = state.currentIndex + 1;
+    
+    if (nextIndex < processedTrailerData.length) {
+      updateState({
+        currentIndex: nextIndex,
+        playPause: true,
+        controller: true
+      });
+      
+      if (flatListRef.current) {
+        flatListRef.current.scrollToIndex({
           index: nextIndex,
           animated: true
         });
-        setState(prev => ({ ...prev, playPause: true }));
+      }
+    } else {
+      // Loop back to first video
+      updateState({
+        currentIndex: 0,
+        playPause: true,
+        controller: true
       });
-    }
-  }, [state.currentIndex, processedTrailerData.length]);
-
-  // Viewable items changed - optimized for smooth scrolling
-  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      const index = viewableItems[0].index;
-      if (index !== state.currentIndex) {
-        // Immediate pause for smooth transition
-        setState(prev => ({
-          ...prev,
-          playPause: false,
-          isScrolling: false,
-        }));
-        
-        // Quick transition to new video
-        requestAnimationFrame(() => {
-          setState(prev => ({
-            ...prev,
-            currentIndex: index,
-            playPause: true,
-          }));
+      
+      if (flatListRef.current) {
+        flatListRef.current.scrollToIndex({
+          index: 0,
+          animated: true
         });
       }
     }
-  }, [state.currentIndex]);
+  }, [state.currentIndex, processedTrailerData.length, updateState]);
+
+  // Viewable items changed - matching ForYouScreen.js pattern
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      const index = viewableItems[0].index;
+      
+      if (index !== state.currentIndex) {
+        updateState({
+          currentIndex: index,
+          playPause: !isScrolling.current, // Only play if not scrolling
+          controller: true
+        });
+      }
+    }
+  }, [state.currentIndex, updateState]);
 
   const viewabilityConfig = useMemo(() => ({
-    itemVisiblePercentThreshold: 60,
-    minimumViewTime: 150,
+    itemVisiblePercentThreshold: 70,
+    minimumViewTime: 200,
     waitForInteraction: false,
   }), []);
 
-  // Scroll handling - optimized for performance
+  // Scroll handling - matching ForYouScreen.js pattern
   const handleScroll = useCallback((event: any) => {
-    const { velocity } = event.nativeEvent;
-    const currentVelocity = velocity?.y || 0;
-    
-    // Only update if not already scrolling or if velocity changed significantly
-    setState(prev => {
-      if (!prev.isScrolling || Math.abs(currentVelocity - prev.scrollVelocity) > 50) {
-        return {
-          ...prev,
-          controller: true,
-          isScrolling: true,
-          playPause: false,
-          scrollVelocity: currentVelocity
-        };
-      }
-      return prev;
-    });
+    updateState({ controller: true });
 
-    // Clear existing timeout
     if (controllerTimeoutRef.current) {
       clearTimeout(controllerTimeoutRef.current);
     }
 
-    // Set timeout for scroll end detection - shorter for fast scrolling
-    const timeout = Math.abs(currentVelocity) > 200 ? 150 : 300;
     controllerTimeoutRef.current = setTimeout(() => {
-      setState(prev => ({ 
-        ...prev, 
-        controller: false,
-        isScrolling: false,
-        playPause: true,
-        scrollVelocity: 0
-      }));
-    }, timeout);
-  }, []);
+      if (!isScrolling.current) { // Only hide controller if not scrolling
+        updateState({ controller: false });
+      }
+    }, 3000);
+  }, [updateState]);
+
+  const onScrollBeginDrag = useCallback(() => {
+    isScrolling.current = true;
+    updateState({ playPause: false });
+  }, [updateState]);
+
+  const onScrollEndDrag = useCallback(() => {
+    // Add a small delay to ensure scroll has fully stopped
+    setTimeout(() => {
+      isScrolling.current = false;
+      updateState({ playPause: true });
+    }, 200);
+  }, [updateState]);
 
   // Refresh
   const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       await refetchTrailers();
+      
+      if (processedTrailerData.length > 0) {
+        updateState({
+          currentIndex: 0,
+          playPause: true,
+          controller: true
+        });
+      }
     } catch (error) {
-      // Handle refresh error silently
+      console.log('Refresh error:', error);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [refetchTrailers]);
+  }, [refetchTrailers, processedTrailerData.length, updateState]);
 
-  // User interactions (placeholder for future implementation)
+  // User interactions
   const handleLike = useCallback(async (trailerId: string) => {
     // Like functionality will be implemented
+    console.log('Like clicked for trailer:', trailerId);
   }, []);
 
   const handleShare = useCallback(async (item: any) => {
     // Share functionality will be implemented
+    console.log('Share clicked for item:', item.title);
   }, []);
 
   const handleWatchNow = useCallback((item: any) => {
     // Extract trailer data for episodes navigation
     const trailerId = item._id;
-    const contentId = item.contentId || item._id; // Use contentId if available, fallback to _id
+    const contentId = item.contentId || item._id;
     const trailerTitle = item.title;
     const trailerDescription = item.description;
     
@@ -368,67 +447,74 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     index,
   }), [screenDimensions.platformHeight]);
 
-  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
-    try {
-      const isCurrentVideo = state.currentIndex === index;
-      const shouldPlay = isFocused && state.playPause && isCurrentVideo && !state.isScrolling;
-      
-      return (
-        <VideoPlayer
-          key={`video-${item.id}-${index}`}
-          item={item}
-          index={index}
-          isVisible={shouldPlay}
-          viewHeight={screenDimensions.platformHeight}
-          isScrolling={state.isScrolling}
-          onEnd={onEnd}
-          onShare={() => handleShare(item)}
-          onLike={() => handleLike(item._id)}
-          onWatchNow={handleWatchNow}
-        />
-      );
-    } catch (error) {
-      // Fallback simple view
-      return (
-        <View 
-          key={`fallback-${item.id}-${index}`}
-          style={{
-            height: screenDimensions.platformHeight,
-            backgroundColor: '#000',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 18 }}>{item.title}</Text>
-          <Text style={{ color: '#ccc', fontSize: 14, marginTop: 10 }}>Video Player Error</Text>
-        </View>
-      );
+    const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
+    const shouldPlay = isFocused && state.playPause && state.currentIndex === index && !isScrolling.current;
+    
+    // Debug logging
+    if (index === state.currentIndex) {
+      console.log('🎯 DiscoverScreen renderItem:', {
+        index,
+        itemTitle: item?.title,
+        isFocused,
+        statePlayPause: state.playPause,
+        currentIndex: state.currentIndex,
+        isScrolling: isScrolling.current,
+        shouldPlay
+      });
     }
-  }, [state.currentIndex, state.playPause, state.isScrolling, isFocused, onEnd, screenDimensions.platformHeight, handleShare, handleLike, handleWatchNow]);
+    
+    return (
+      <View style={{ height: screenDimensions.platformHeight, width: '100%' }}>
+        <TrailerVideoPlayer
+          episode={item}
+          isPlaying={shouldPlay}
+          style={{ flex: 1 }}
+          isScrolling={isScrolling.current}
+          onPauseStateChange={(isPaused: boolean) => {
+            // Handle pause state change if needed
+            console.log('Video pause state changed:', isPaused, 'for episode:', item.title);
+          }}
+          externalPauseTrigger={0}
+          externalSeekTime={0}
+          onProgress={(currentTime: number, duration: number) => {
+            // Handle progress updates if needed
+          }}
+          onWatchNow={handleWatchNow}
+          onLike={handleLike}
+          onShare={handleShare}
+        />
+      </View>
+    );
+  }, [
+    isFocused, 
+    state,
+    screenDimensions.platformHeight,
+    handleWatchNow,
+    handleLike,
+    handleShare,
+  ]);
 
   const keyExtractor = useCallback((item: any, index: number) =>
-    item?.id?.toString() || `video-${index}`, []);
+    item?._id?.toString() || `video-${index}`, []);
 
   const onScrollToIndexFailed = useCallback((info: any) => {
-    const wait = new Promise(resolve => setTimeout(resolve, 500));
+    const wait = new Promise(resolve => setTimeout(resolve, 200));
     wait.then(() => {
-      flatListRef.current?.scrollToIndex({
-        index: info.index,
-        animated: true
-      });
+      if (flatListRef.current) {
+        flatListRef.current.scrollToIndex({
+          index: info.index,
+          animated: true
+        });
+      }
     });
   }, []);
 
-  // Cleanup on unmount
+  // Reset refresh state when screen loses focus
   useEffect(() => {
-    return () => {
-      if (controllerTimeoutRef.current) {
-        clearTimeout(controllerTimeoutRef.current);
-      }
-    };
-  }, []);
-
-
+    if (!isFocused) {
+      setIsRefreshing(false);
+    }
+  }, [isFocused]);
 
   // Loading state
   if (trailerLoading && !processedTrailerData.length) {
@@ -466,15 +552,13 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     );
   };
 
-
-
   return (
     <View style={style.container}>
       <LinearGradient
         style={{ flex: 0, height: screenDimensions.insets.top }}
         colors={gradientColors}
       />
-      <View style={[style.container, { marginBottom: screenDimensions.marginBottom }]}>
+      <View style={[style.container, { height: screenDimensions.platformHeight }]}>
         <FlatList
           ref={flatListRef}
           data={processedTrailerData}
@@ -482,9 +566,8 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
           keyExtractor={keyExtractor}
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          decelerationRate="fast"
+          decelerationRate="normal"
           scrollEventThrottle={16}
-          initialScrollIndex={state.currentIndex}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           getItemLayout={getItemLayout}
@@ -498,48 +581,23 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
           refreshControl={
             <RefreshControl
               onRefresh={onRefresh}
-              refreshing={trailerLoading}
+              refreshing={isRefreshing || trailerLoading}
               tintColor={safeColors.PRIMARYBG}
               colors={[safeColors.PRIMARYBG]}
             />
           }
           onScroll={handleScroll}
-          onScrollBeginDrag={() => {
-            setState(prev => ({ 
-              ...prev, 
-              isScrolling: true, 
-              playPause: false,
-              controller: true 
-            }));
-          }}
-          onScrollEndDrag={() => {
-            // Quick response when user stops dragging
-            setState(prev => ({ 
-              ...prev, 
-              isScrolling: false, 
-              playPause: true,
-              controller: false,
-              scrollVelocity: 0
-            }));
-          }}
-          onMomentumScrollEnd={() => {
-            // Handle momentum scrolling end
-            setState(prev => ({ 
-              ...prev, 
-              isScrolling: false, 
-              playPause: true,
-              controller: false,
-              scrollVelocity: 0
-            }));
-          }}
+          onScrollBeginDrag={onScrollBeginDrag}
+          onScrollEndDrag={onScrollEndDrag}
           onScrollToIndexFailed={onScrollToIndexFailed}
           ListEmptyComponent={ListEmptyComponent}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10,
-          }}
-          snapToInterval={screenDimensions.platformHeight}
-          snapToAlignment="start"
+          scrollIndicatorInsets={{ right: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          bounces={true}
+          bouncesZoom={false}
+          alwaysBounceVertical={false}
+          directionalLockEnabled={true}
+          showsHorizontalScrollIndicator={false}
         />
       </View>
     </View>
@@ -550,6 +608,7 @@ const styles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme?.colors?.PRIMARYBLACK || '#000000',
+    width: '100%',
   },
 });
 

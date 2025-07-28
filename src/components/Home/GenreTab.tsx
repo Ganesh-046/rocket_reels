@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../../theme';
+import { Text } from 'react-native';
+import { PressableButton } from '../Button';
 
 interface GenreTabProps {
   item: any;
@@ -16,43 +16,51 @@ interface GenreTabProps {
   navigation: any;
 }
 
-const GenreTab: React.FC<GenreTabProps> = ({
-  item,
-  index,
-  isSelected,
-  setIsSelected,
-  setCurrentBannerIndex,
-  style,
-  colors,
-  appFonts,
-  isLargeDevice,
-  loadingStates,
-  navigation,
+const GenreTab: React.FC<GenreTabProps> = React.memo(({ 
+  item, 
+  index, 
+  isSelected, 
+  setIsSelected, 
+  setCurrentBannerIndex, 
+  style, 
+  colors, 
+  appFonts, 
+  isLargeDevice, 
+  loadingStates 
 }) => {
-  const isActive = isSelected === item.slug || isSelected === item.name;
-
-  const handlePress = () => {
-    setIsSelected(item.slug || item.name);
-    setCurrentBannerIndex(0);
-  };
-
+  const isActive = isSelected === item.slug;
+  
   return (
-    <TouchableOpacity
-      style={[style.tabBarCard, isActive && { borderColor: colors.PRIMARYWHITE }]}
-      onPress={handlePress}
-      activeOpacity={0.7}
+    <PressableButton
+      key={`genre-${item.slug}-${index}`}
+      onPress={() => {
+        if (isActive) return;
+        setIsSelected(item.slug);
+        setCurrentBannerIndex(0);
+      }}
+      style={[
+        style.tabBarCard,
+        {
+          borderColor: isActive ? colors.PRIMARYWHITEFOUR : colors.TRANSPARENT,
+          marginLeft: index === 0 ? 7 : 0,
+          opacity: isActive ? 1 : 0.7
+        }
+      ]}
+      disabled={loadingStates.content}
     >
       <Text
         style={[
-          style.txt,
-          isActive && { color: colors.PRIMARYWHITE, fontWeight: 'bold' },
+          style.heading,
+          {
+            fontSize: isLargeDevice ? appFonts.APP_FONT_SIZE_18 : appFonts.APP_FONT_SIZE_35,
+            color: isActive ? colors.PRIMARYWHITE : colors.PRIMARYWHITEFOUR
+          }
         ]}
-        numberOfLines={1}
       >
-        {item.name || item.slug || ''}
+        {item.name.toUpperCase()}
       </Text>
-    </TouchableOpacity>
+    </PressableButton>
   );
-};
+});
 
 export default GenreTab; 

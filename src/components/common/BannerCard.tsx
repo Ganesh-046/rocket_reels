@@ -38,7 +38,6 @@ const BannerCard = ({ item, index, navigation, currentBannerIndex }: BannerCardP
  const [isLiked, setIsLiked] = useState(false);
  const [likeScale] = useState(new Animated.Value(1));
 
-
  // Optimized like animation
  const handleLikePress = useCallback(() => {
    setIsLiked(!isLiked);
@@ -64,12 +63,6 @@ const BannerCard = ({ item, index, navigation, currentBannerIndex }: BannerCardP
    const contentId = item.contentId || item._id || item.id;
    const contentTitle = item?.contentDetails?.title || item.title || item.name;
    const contentDescription = item?.contentDetails?.description || item.description;
-  
-   console.log('BannerCard clicked:', {
-     contentId,
-     contentTitle,
-     contentDescription
-   });
   
    // Navigate to EpisodePlayerScreen with content data
    navigation.navigate('EpisodePlayer', {
@@ -102,13 +95,11 @@ const BannerCard = ({ item, index, navigation, currentBannerIndex }: BannerCardP
  const handleImageError = useCallback(() => {
    setImageLoading(false);
    setImageError(true);
-   console.log(`❌ BannerCard ${index} image error for URL:`, item?.imageUri);
  }, [index, item?.imageUri]);
 
 
  const handleImageLoad = useCallback(() => {
    setImageLoading(false);
-   console.log(`✅ BannerCard ${index} image loaded successfully:`, item?.imageUri);
  }, [index, item?.imageUri]);
 
 
@@ -139,7 +130,7 @@ const BannerCard = ({ item, index, navigation, currentBannerIndex }: BannerCardP
        {/* Main image */}
        <FastImage
          style={[style.img, imageLoading && style.hiddenImage]}
-         source={item?.imageUri ? {
+         source={item?.imageUri && item.imageUri !== '' ? {
            uri: item.imageUri,
            priority: "high",
            cache: 'immutable'

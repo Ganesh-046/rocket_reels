@@ -35,7 +35,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
  const handlePress = () => {
    if (item._id || item.id) {
-     // Extract data for episodes navigation
+     // Extract data for promo navigation
      const contentId = item.contentId || item._id || item.id;
      const contentTitle = item.title || item.name;
      const contentDescription = item.description;
@@ -46,17 +46,19 @@ const MovieCard: React.FC<MovieCardProps> = ({
        contentDescription
      });
     
-     // Navigate to EpisodePlayerScreen with content data
-     navigation.navigate('EpisodePlayer', {
-       contentId: contentId,
-       contentName: contentTitle,
-       episodes: [], // Will be loaded by EpisodePlayerScreen
-       initialIndex: 0,
-       trailerData: {
-         id: item._id || item.id,
+     // Navigate to PromoDetailScreen first, then to EpisodePlayerScreen
+     navigation.navigate('PromoDetail', {
+       item: {
+         ...item,
+         _id: contentId,
          title: contentTitle,
          description: contentDescription,
-         contentId: contentId
+         trailerData: {
+           id: item._id || item.id,
+           title: contentTitle,
+           description: contentDescription,
+           contentId: contentId
+         }
        }
      });
    }
@@ -106,7 +108,7 @@ const styles = (theme: any, isLargeDevice: boolean, width: number, height: numbe
    width: isLargeDevice ? width * .3135 : width * .45,
    justifyContent: 'center',
    margin: width * .01,
-   marginBottom: -20,
+   marginBottom: -15,
    borderRadius: width * .01,
    marginHorizontal: width * .01,
    backgroundColor: theme.colors.PRIMARYWHITEONE

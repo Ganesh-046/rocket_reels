@@ -11,6 +11,7 @@ import RewardsScreen from '../features/profile/screens/RewardsScreen';
 import EpisodePlayerScreen from '../features/reels/screens/EpisodePlayerScreen';
 import HomeScreen from '../screens/HomeScreen';
 import WebViewScreen from '../screens/WebViewScreen';
+import PromoDetailScreen from '../screens/PromoDetailScreen';
 
 // Profile Screens
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen';
@@ -47,6 +48,7 @@ export default function BottomTabNavigator() {
       <Stack.Screen name="Tabs" component={Tabs} />
       <Stack.Screen name="ReelDetail" component={ReelDetailScreen} />
       <Stack.Screen name="Shorts" component={Shorts} />
+      <Stack.Screen name="PromoDetail" component={PromoDetailScreen} />
       <Stack.Screen name="EpisodePlayer" component={EpisodePlayerScreen} />
       
       {/* Profile Screens */}

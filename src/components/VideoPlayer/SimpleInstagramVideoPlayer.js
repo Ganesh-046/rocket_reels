@@ -20,7 +20,7 @@ import { NavigationService } from '../../navigation/NavigationService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScrolling = false }) => {
+const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScrolling = false, onPauseStateChange, externalPauseTrigger, externalSeekTime, onProgress }) => {
   const videoRef = useRef(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -50,36 +50,25 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
   const likeDislikeMutation = useLikeDislikeContent();
   const { data: likedContent } = useLikedContent(user?._id);
 
-  // Debug logs for like functionality
-  console.log('🔍 VideoPlayer - Like Debug Info:', {
-    hasUser: !!user,
-    userId: user?._id,
-    userObject: user,
-    hasEpisode: !!episode,
-    episodeId: episode?._id,
-    episodeObject: episode,
-    hasLikeMutation: !!likeDislikeMutation,
-    hasLikedContent: !!likedContent,
-    likedContentData: likedContent?.data,
-    isLiked: isLiked,
-    isAuthenticated: !!user?._id,
-    navigationServiceAvailable: !!NavigationService
-  });
+  // Debug logs for like functionality (reduced for performance)
+  // console.log('🔍 VideoPlayer - Like Debug Info:', {
+  //   hasUser: !!user,
+  //   userId: user?._id,
+  //   hasEpisode: !!episode,
+  //   episodeId: episode?._id,
+  //   isLiked: isLiked,
+  // });
 
   // Get video URL based on quality
   const getVideoUrl = useCallback(() => {
-    // Log all available video URLs for debugging
-    if (episode?.video_urls) {
-      console.log('🎬 Video Quality URLs for:', episode._id);
-      console.log('📋 Available Qualities:', episode.video_urls);
-    }
-
-    // Get URL based on selected quality
+    // Get URL based on selected quality (optimized)
     let videoUrl = null;
+    let selectedQuality = currentQuality;
     
     if (currentQuality === 'auto' || !episode?.video_urls?.[currentQuality]) {
       // Use master URL for auto or if specific quality not available
       videoUrl = episode?.video_urls?.master || episode?.video_url || '';
+      selectedQuality = 'auto';
     } else {
       // Use specific quality URL
       videoUrl = episode?.video_urls?.[currentQuality] || '';
@@ -87,9 +76,16 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
 
     if (!videoUrl) return null;
 
-    // Log the selected URL
-    console.log('🎬 SimpleInstagramVideoPlayer - Selected quality:', currentQuality);
-    console.log('🎬 SimpleInstagramVideoPlayer - Video URL:', videoUrl);
+    // Log quality selection for HD content
+    if (selectedQuality === '1080p' || selectedQuality === '720p' || videoUrl.includes('1080p') || videoUrl.includes('720p')) {
+      console.log('🎬 Playing HD quality:', {
+        episodeId: episode?._id,
+        selectedQuality,
+        has1080p: !!episode?.video_urls?.['1080p'],
+        has720p: !!episode?.video_urls?.['720p'],
+        url: videoUrl
+      });
+    }
 
     if (videoUrl.startsWith('http')) {
       return videoUrl;
@@ -101,7 +97,7 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
 
   const videoUrl = getVideoUrl();
 
-  // Video source configuration
+  // Optimized video source configuration for HD playback
   const videoSource = useMemo(() => {
     if (!videoUrl) return null;
 
@@ -113,16 +109,20 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
         'Accept': 'application/vnd.apple.mpegurl, application/x-mpegURL, video/mp2t, video/mp4, video/*',
         'Cache-Control': 'max-age=3600',
         'Accept-Encoding': 'gzip, deflate',
+        'Range': 'bytes=0-', // Support for range requests for better streaming
       },
+      shouldCache: true,
+      minLoadRetryCount: 1,
+      maxBitRate: 3000000, // Increased for HD content
     };
   }, [videoUrl]);
 
-  // Buffer configuration
+  // Optimized buffer configuration for HD playback
   const bufferConfig = useMemo(() => ({
-    minBufferMs: 500,
-    maxBufferMs: 2000,
-    bufferForPlaybackMs: 100,
-    bufferForPlaybackAfterRebufferMs: 500,
+    minBufferMs: 2000, // Increased for HD content
+    maxBufferMs: 10000, // Increased for HD content
+    bufferForPlaybackMs: 1000, // Increased for HD content
+    bufferForPlaybackAfterRebufferMs: 2000, // Increased for HD content
   }), []);
 
   // Cleanup on unmount
@@ -155,6 +155,40 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
       hideTimerRef.current = null;
     }
   }, [episode?._id]);
+
+  // Handle external pause trigger
+  useEffect(() => {
+    if (externalPauseTrigger) {
+      handlePlayPause();
+    }
+  }, [externalPauseTrigger]);
+
+  // Handle external seek trigger
+  useEffect(() => {
+    if (externalSeekTime !== null && externalSeekTime !== undefined && videoRef.current) {
+      try {
+        videoRef.current.seek(externalSeekTime);
+        console.log('🎬 VideoPlayer - Seeking to:', externalSeekTime, 'seconds');
+      } catch (error) {
+        console.log('❌ VideoPlayer - Seek error:', error);
+      }
+    }
+  }, [externalSeekTime]);
+
+  // Reset seek trigger after processing
+  useEffect(() => {
+    if (externalSeekTime !== null && externalSeekTime !== undefined) {
+      // Reset the seek trigger after a short delay to allow for future seeks
+      const timer = setTimeout(() => {
+        if (externalSeekTime !== null) {
+          // Only reset if it's still the same value (not a new seek)
+          console.log('🔄 VideoPlayer - Resetting seek trigger');
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [externalSeekTime]);
 
   // Initialize like state when episode or liked content changes
   useEffect(() => {
@@ -216,20 +250,38 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
     console.log('✅ SimpleInstagramVideoPlayer - Video Loaded:', {
       episodeId: episode?._id,
       duration: data.duration,
+      totalTime: data.totalTime,
+      playableDuration: data.playableDuration,
+      seekableDuration: data.seekableDuration,
       loadTime: `${loadTime}ms`,
     });
     
     setIsVideoReady(true);
     setError(null);
-  }, [episode?._id, loadStartTime]);
+    
+    // Send initial duration to parent (like acu_ott approach)
+    if (onProgress) {
+      // Use seekableDuration as primary source for initial duration too
+      const totalDuration = data.seekableDuration || data.duration || data.totalTime || data.playableDuration;
+      if (totalDuration) {
+        onProgress(0, totalDuration);
+        console.log('📊 Initial Duration Set:', totalDuration);
+      }
+    }
+  }, [episode?._id, loadStartTime, onProgress]);
 
   const handleReadyForDisplay = useCallback(() => {
     console.log('🎬 SimpleInstagramVideoPlayer - Video Ready:', episode?._id);
   }, [episode?._id]);
 
   const handleProgress = useCallback((data) => {
-    // Progress tracking
-  }, []);
+    if (onProgress) {
+      // 🔑 KEY: Use seekableDuration as primary source (like acu_ott)
+      // seekableDuration is specifically designed for streaming videos with dynamic duration
+      const totalDuration = data.seekableDuration || data.duration || data.totalTime || data.playableDuration;
+      onProgress(data.currentTime, totalDuration);
+    }
+  }, [onProgress]);
 
   const handleBuffer = useCallback((data) => {
     setIsBuffering(data.isBuffering);
@@ -372,11 +424,19 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
 
   // Handle play/pause toggle
   const handlePlayPause = useCallback(() => {
-    setIsPaused(prev => !prev);
-  }, []);
+    const newPauseState = !isPaused;
+    setIsPaused(newPauseState);
+    
+    // Notify parent component about pause state change
+    if (onPauseStateChange) {
+      onPauseStateChange(newPauseState);
+    }
+  }, [isPaused, onPauseStateChange]);
 
   // Determine if video should be paused
   const shouldPause = !isPlaying || isScrolling || isPaused;
+
+
 
   return (
     <View style={[styles.container, style]}>
@@ -449,7 +509,7 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
           </TouchableOpacity>
           
           {/* Like Button */}
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={styles.likeButton}
             onPress={() => {
               console.log('❤️ VideoPlayer - Like button pressed');
@@ -461,7 +521,7 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
               size={28} 
               color={isLiked ? "#ff4757" : "#ffffff"} 
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       )}
 
