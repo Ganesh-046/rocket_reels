@@ -740,14 +740,66 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
 
   const handleMaybeLater = useCallback(() => {
     setIsSubscriptionModalVisible(false);
-    // Play the locked episode anyway
-    console.log('Playing locked episode despite subscription requirement');
-
-    // Set the current episode to the locked one so it can play
-    if (currentEpisode && currentEpisode.status === 'locked') {
-      setCurrentVideo(currentEpisode._id);
+    
+    // Find the previous episode (non-locked)
+    const currentIndex = episodesData.findIndex((ep: Episode) => ep._id === currentEpisode?._id);
+    let previousEpisode = null;
+    
+    // Look for the previous unlocked episode
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const episode = episodesData[i];
+      const isLocked = episode.status === 'locked' &&
+        !(
+          (user as any)?.isSubscriber ||
+          (user as any)?.yearlySubscriber ||
+          (user as any)?.weeklySubscriber
+        );
+      
+      if (!isLocked) {
+        previousEpisode = episode;
+        break;
+      }
     }
-  }, [currentEpisode]);
+    
+    if (previousEpisode) {
+      console.log('🎬 EpisodePlayerScreen - Playing previous episode:', {
+        from: currentEpisode?._id,
+        to: previousEpisode._id,
+        episodeNo: previousEpisode.episodeNo
+      });
+      
+      // Navigate to the previous episode
+      const previousIndex = episodesData.findIndex((ep: Episode) => ep._id === previousEpisode._id);
+      if (flatListRef.current && previousIndex >= 0) {
+        flatListRef.current.scrollToIndex({
+          index: previousIndex,
+          animated: true,
+        });
+      }
+      
+      // Set the previous episode as current
+      setCurrentEpisode(previousEpisode);
+      setCurrentVideo(previousEpisode._id);
+      
+      // Reset progress for the new episode
+      updateEpisodeProgress(previousEpisode._id, {
+        progress: 0,
+        duration: 0,
+        actualDuration: 0,
+        isSeeking: false,
+        seekPosition: 0,
+        externalSeekTime: null,
+        lastSeekTime: null,
+        durationChangeCount: 0,
+        showProgressBar: false,
+        isPaused: false,
+        externalPauseTrigger: 0
+      });
+    } else {
+      console.log('🎬 EpisodePlayerScreen - No previous unlocked episode found, staying on current');
+      // If no previous unlocked episode, just close the modal
+    }
+  }, [currentEpisode, episodesData, user, setCurrentVideo, updateEpisodeProgress]);
 
   const handleShare = useCallback(async (episode: Episode) => {
     try {
@@ -852,8 +904,56 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
             );
 
           if (isLocked) {
-            // Don't set the locked episode as current, but don't show modal automatically
-            // Modal will be shown only when user taps the screen
+            // Skip locked episodes - find the next unlocked episode
+            let nextUnlockedIndex = newIndex;
+            for (let i = newIndex + 1; i < episodesData.length; i++) {
+              const episode = episodesData[i];
+              const episodeIsLocked = episode.status === 'locked' &&
+                !(
+                  (user as any)?.isSubscriber ||
+                  (user as any)?.yearlySubscriber ||
+                  (user as any)?.weeklySubscriber
+                );
+              
+              if (!episodeIsLocked) {
+                nextUnlockedIndex = i;
+                break;
+              }
+            }
+            
+            // If no next unlocked episode found, look for previous unlocked episode
+            if (nextUnlockedIndex === newIndex) {
+              for (let i = newIndex - 1; i >= 0; i--) {
+                const episode = episodesData[i];
+                const episodeIsLocked = episode.status === 'locked' &&
+                  !(
+                    (user as any)?.isSubscriber ||
+                    (user as any)?.yearlySubscriber ||
+                    (user as any)?.weeklySubscriber
+                  );
+                
+                if (!episodeIsLocked) {
+                  nextUnlockedIndex = i;
+                  break;
+                }
+              }
+            }
+            
+            // Navigate to the unlocked episode
+            if (nextUnlockedIndex !== newIndex && flatListRef.current) {
+              flatListRef.current.scrollToIndex({
+                index: nextUnlockedIndex,
+                animated: true,
+              });
+              currentIndex.current = nextUnlockedIndex;
+              
+              const unlockedEpisode = episodesData[nextUnlockedIndex];
+              if (unlockedEpisode) {
+                setCurrentEpisode(unlockedEpisode);
+                setCurrentVideo(unlockedEpisode._id);
+                addToCache(unlockedEpisode._id);
+              }
+            }
             return;
           }
 
@@ -884,21 +984,81 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
     // Snap to the nearest episode
     const newIndex = Math.round(currentScrollY / viewHeight);
     if (newIndex >= 0 && newIndex < episodesData.length) {
-      currentIndex.current = newIndex;
-
       const newEpisode = episodesData[newIndex];
-      if (newEpisode) {
-        setCurrentEpisode(newEpisode);
-        setCurrentVideo(newEpisode._id);
+      
+      // Check if the episode is locked
+      const isLocked = newEpisode?.status === 'locked' &&
+        !(
+          (user as any)?.isSubscriber ||
+          (user as any)?.yearlySubscriber ||
+          (user as any)?.weeklySubscriber
+        );
+
+      if (isLocked) {
+        // Skip locked episodes - find the next unlocked episode
+        let nextUnlockedIndex = newIndex;
+        for (let i = newIndex + 1; i < episodesData.length; i++) {
+          const episode = episodesData[i];
+          const episodeIsLocked = episode.status === 'locked' &&
+            !(
+              (user as any)?.isSubscriber ||
+              (user as any)?.yearlySubscriber ||
+              (user as any)?.weeklySubscriber
+            );
+          
+          if (!episodeIsLocked) {
+            nextUnlockedIndex = i;
+            break;
+          }
+        }
+        
+        // If no next unlocked episode found, look for previous unlocked episode
+        if (nextUnlockedIndex === newIndex) {
+          for (let i = newIndex - 1; i >= 0; i--) {
+            const episode = episodesData[i];
+            const episodeIsLocked = episode.status === 'locked' &&
+              !(
+                (user as any)?.isSubscriber ||
+                (user as any)?.yearlySubscriber ||
+                (user as any)?.weeklySubscriber
+              );
+            
+            if (!episodeIsLocked) {
+              nextUnlockedIndex = i;
+              break;
+            }
+          }
+        }
+        
+        // Navigate to the unlocked episode
+        if (nextUnlockedIndex !== newIndex && flatListRef.current) {
+          flatListRef.current.scrollToIndex({
+            index: nextUnlockedIndex,
+            animated: true,
+          });
+          currentIndex.current = nextUnlockedIndex;
+          
+          const unlockedEpisode = episodesData[nextUnlockedIndex];
+          if (unlockedEpisode) {
+            setCurrentEpisode(unlockedEpisode);
+            setCurrentVideo(unlockedEpisode._id);
+          }
+        }
+      } else {
+        currentIndex.current = newIndex;
+        if (newEpisode) {
+          setCurrentEpisode(newEpisode);
+          setCurrentVideo(newEpisode._id);
+        }
       }
 
       // Update preloader after momentum ends - less aggressive
-      instagramStyleVideoPreloader.setCurrentIndex(newIndex);
-      smartPreload(newIndex + 1);
+      instagramStyleVideoPreloader.setCurrentIndex(currentIndex.current);
+      smartPreload(currentIndex.current + 1);
     }
 
     setIsScrollingFast(false);
-  }, [episodesData, viewHeight, setCurrentVideo, smartPreload]);
+  }, [episodesData, viewHeight, setCurrentVideo, smartPreload, user]);
 
   // Simplified viewability handling - less aggressive
   const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
@@ -912,44 +1072,126 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
       const newActiveIndex = viewableItems[0]?.index;
       if (newActiveIndex !== undefined && newActiveIndex !== currentIndex.current) {
         const previousIndex = currentIndex.current;
-        currentIndex.current = newActiveIndex;
-
+        
         const newEpisode = episodesData[newActiveIndex];
-        if (newEpisode) {
-          setCurrentEpisode(newEpisode);
-          setCurrentVideo(newEpisode._id);
+        
+        // Check if the episode is locked
+        const isLocked = newEpisode?.status === 'locked' &&
+          !(
+            (user as any)?.isSubscriber ||
+            (user as any)?.yearlySubscriber ||
+            (user as any)?.weeklySubscriber
+          );
 
-          // Reset progress for the new episode (start from beginning)
-          updateEpisodeProgress(newEpisode._id, {
-            progress: 0,
-            duration: 0,
-            actualDuration: 0,
-            isSeeking: false,
-            seekPosition: 0,
-            externalSeekTime: null,
-            lastSeekTime: null,
-            durationChangeCount: 0,
-            showProgressBar: false,
-            isPaused: false,
-            externalPauseTrigger: 0
-          });
+        if (isLocked) {
+          // Skip locked episodes - find the next unlocked episode
+          let nextUnlockedIndex = newActiveIndex;
+          for (let i = newActiveIndex + 1; i < episodesData.length; i++) {
+            const episode = episodesData[i];
+            const episodeIsLocked = episode.status === 'locked' &&
+              !(
+                (user as any)?.isSubscriber ||
+                (user as any)?.yearlySubscriber ||
+                (user as any)?.weeklySubscriber
+              );
+            
+            if (!episodeIsLocked) {
+              nextUnlockedIndex = i;
+              break;
+            }
+          }
+          
+          // If no next unlocked episode found, look for previous unlocked episode
+          if (nextUnlockedIndex === newActiveIndex) {
+            for (let i = newActiveIndex - 1; i >= 0; i--) {
+              const episode = episodesData[i];
+              const episodeIsLocked = episode.status === 'locked' &&
+                !(
+                  (user as any)?.isSubscriber ||
+                  (user as any)?.yearlySubscriber ||
+                  (user as any)?.weeklySubscriber
+                );
+              
+              if (!episodeIsLocked) {
+                nextUnlockedIndex = i;
+                break;
+              }
+            }
+          }
+          
+          // Navigate to the unlocked episode
+          if (nextUnlockedIndex !== newActiveIndex && flatListRef.current) {
+            flatListRef.current.scrollToIndex({
+              index: nextUnlockedIndex,
+              animated: true,
+            });
+            currentIndex.current = nextUnlockedIndex;
+            
+            const unlockedEpisode = episodesData[nextUnlockedIndex];
+            if (unlockedEpisode) {
+              setCurrentEpisode(unlockedEpisode);
+              setCurrentVideo(unlockedEpisode._id);
 
-          console.log('🔄 EpisodePlayerScreen - Scrolled to new episode, reset progress:', {
-            from: previousIndex,
-            to: newActiveIndex,
-            episodeId: newEpisode._id
-          });
+              // Reset progress for the new episode (start from beginning)
+              updateEpisodeProgress(unlockedEpisode._id, {
+                progress: 0,
+                duration: 0,
+                actualDuration: 0,
+                isSeeking: false,
+                seekPosition: 0,
+                externalSeekTime: null,
+                lastSeekTime: null,
+                durationChangeCount: 0,
+                showProgressBar: false,
+                isPaused: false,
+                externalPauseTrigger: 0
+              });
+
+              console.log('🔄 EpisodePlayerScreen - Scrolled to unlocked episode, reset progress:', {
+                from: previousIndex,
+                to: nextUnlockedIndex,
+                episodeId: unlockedEpisode._id
+              });
+            }
+          }
+        } else {
+          currentIndex.current = newActiveIndex;
+          if (newEpisode) {
+            setCurrentEpisode(newEpisode);
+            setCurrentVideo(newEpisode._id);
+
+            // Reset progress for the new episode (start from beginning)
+            updateEpisodeProgress(newEpisode._id, {
+              progress: 0,
+              duration: 0,
+              actualDuration: 0,
+              isSeeking: false,
+              seekPosition: 0,
+              externalSeekTime: null,
+              lastSeekTime: null,
+              durationChangeCount: 0,
+              showProgressBar: false,
+              isPaused: false,
+              externalPauseTrigger: 0
+            });
+
+            console.log('🔄 EpisodePlayerScreen - Scrolled to new episode, reset progress:', {
+              from: previousIndex,
+              to: newActiveIndex,
+              episodeId: newEpisode._id
+            });
+          }
         }
 
         // Update preloader with current context - less aggressive
-        instagramStyleVideoPreloader.setCurrentIndex(newActiveIndex);
+        instagramStyleVideoPreloader.setCurrentIndex(currentIndex.current);
         instagramStyleVideoPreloader.setVisibleIndices(newVisibleIndices);
 
         // Moderate preloading for next episodes
-        smartPreload(newActiveIndex + 1);
+        smartPreload(currentIndex.current + 1);
       }
     }
-  }, [episodesData, setCurrentVideo, smartPreload, isScrollingFast, updateEpisodeProgress]);
+  }, [episodesData, setCurrentVideo, smartPreload, isScrollingFast, updateEpisodeProgress, user]);
 
   // Format time helper
   const formatTime = useCallback((seconds: number) => {
@@ -964,6 +1206,14 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
 
     const isActive = currentIndex.current === index;
     const isLiked = localLikeStates.get(item._id) || false;
+
+    // Check if episode is locked
+    const isLocked = item.status === 'locked' &&
+      !(
+        (user as any)?.isSubscriber ||
+        (user as any)?.yearlySubscriber ||
+        (user as any)?.weeklySubscriber
+      );
 
     // Get per-episode progress state
     const episodeProgress = getEpisodeProgress(item._id);
@@ -987,17 +1237,36 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
 
     return (
       <View key={item._id} style={{ width: '100%', height: viewHeight }}>
-        {/* Simple Instagram Video Player */}
-        <SimpleInstagramVideoPlayer
-          episode={item}
-          isPlaying={isActive && !isScrollingFast}
-          isScrolling={isScrollingFast}
-          style={{ width: '100%', height: '100%' }}
-          onPauseStateChange={(isPaused: boolean) => handlePauseStateChange(isPaused, item._id)}
-          externalPauseTrigger={episodeProgress.externalPauseTrigger}
-          externalSeekTime={episodeProgress.externalSeekTime}
-          onProgress={(currentTime: number, duration: number) => handleProgressUpdate(currentTime, duration, item._id)}
-        />
+        {/* Show locked content overlay instead of video player for locked episodes */}
+        {isLocked ? (
+          <View style={styles.lockedContentOverlay}>
+            <View style={styles.lockedIconContainer}>
+              <Icon name="lock-closed" size={80} color="#ffffff" />
+            </View>
+            <Text style={styles.lockedTitle}>Premium Content</Text>
+            <Text style={styles.lockedSubtitle}>
+              This episode is locked. Subscribe to unlock all premium content.
+            </Text>
+            <TouchableOpacity
+              style={styles.unlockButton}
+              onPress={() => setIsSubscriptionModalVisible(true)}
+            >
+              <Text style={styles.unlockButtonText}>Unlock Now</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* Simple Instagram Video Player - Only render for unlocked episodes */
+          <SimpleInstagramVideoPlayer
+            episode={item}
+            isPlaying={isActive && !isScrollingFast}
+            isScrolling={isScrollingFast}
+            style={{ width: '100%', height: '100%' }}
+            onPauseStateChange={(isPaused: boolean) => handlePauseStateChange(isPaused, item._id)}
+            externalPauseTrigger={episodeProgress.externalPauseTrigger}
+            externalSeekTime={episodeProgress.externalSeekTime}
+            onProgress={(currentTime: number, duration: number) => handleProgressUpdate(currentTime, duration, item._id)}
+          />
+        )}
 
         {/* Top Navigation Overlay */}
         <Animated.View 
@@ -1263,26 +1532,62 @@ const EpisodePlayerScreen: React.FC<EpisodePlayerScreenProps> = ({ navigation, r
         initialEpisodeId: episodesData[initialIndex]?._id
       });
 
-      // Ensure initial episode is properly set up
-      currentIndex.current = initialIndex;
-      setVisibleIndices(new Set([initialIndex]));
-
+      // Check if initial episode is locked
       const initialEpisode = episodesData[initialIndex];
-      if (initialEpisode) {
-        console.log('🎬 EpisodePlayerScreen - Setting initial episode:', {
-          episodeId: initialEpisode._id,
-          title: initialEpisode.title,
-          episodeNo: initialEpisode.episodeNo
+      const isInitialLocked = initialEpisode?.status === 'locked' &&
+        !(
+          (user as any)?.isSubscriber ||
+          (user as any)?.yearlySubscriber ||
+          (user as any)?.weeklySubscriber
+        );
+
+      let actualInitialIndex = initialIndex;
+      let actualInitialEpisode = initialEpisode;
+
+      if (isInitialLocked) {
+        // Find the first unlocked episode
+        for (let i = 0; i < episodesData.length; i++) {
+          const episode = episodesData[i];
+          const episodeIsLocked = episode.status === 'locked' &&
+            !(
+              (user as any)?.isSubscriber ||
+              (user as any)?.yearlySubscriber ||
+              (user as any)?.weeklySubscriber
+            );
+          
+          if (!episodeIsLocked) {
+            actualInitialIndex = i;
+            actualInitialEpisode = episode;
+            break;
+          }
+        }
+        
+        console.log('🎬 EpisodePlayerScreen - Initial episode was locked, using first unlocked episode:', {
+          originalIndex: initialIndex,
+          actualIndex: actualInitialIndex,
+          episodeId: actualInitialEpisode?._id
         });
-        setCurrentEpisode(initialEpisode);
-        setCurrentVideo(initialEpisode._id);
       }
 
-      smartPreload(initialIndex);
+      // Ensure initial episode is properly set up
+      currentIndex.current = actualInitialIndex;
+      setVisibleIndices(new Set([actualInitialIndex]));
+
+      if (actualInitialEpisode) {
+        console.log('🎬 EpisodePlayerScreen - Setting initial episode:', {
+          episodeId: actualInitialEpisode._id,
+          title: actualInitialEpisode.title,
+          episodeNo: actualInitialEpisode.episodeNo
+        });
+        setCurrentEpisode(actualInitialEpisode);
+        setCurrentVideo(actualInitialEpisode._id);
+      }
+
+      smartPreload(actualInitialIndex);
     } else {
       console.log('⚠️ EpisodePlayerScreen - No episodes data available');
     }
-  }, [episodesData, initialIndex, smartPreload, setCurrentVideo]);
+  }, [episodesData, initialIndex, smartPreload, setCurrentVideo, user]);
 
   // Reset progress state when episode changes
   useEffect(() => {
@@ -1783,6 +2088,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ffffff',
     textAlign: 'center',
+  },
+  // Locked content overlay styles
+  lockedContentOverlay: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  lockedIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  lockedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  lockedSubtitle: {
+    fontSize: 16,
+    color: '#cccccc',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  unlockButton: {
+    backgroundColor: '#ED9B72',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  unlockButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 
 });

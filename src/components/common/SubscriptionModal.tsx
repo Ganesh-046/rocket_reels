@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -43,64 +44,75 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
             style={styles.gradientContainer}
           >
-
-
-            {/* Lock Icon */}
-            <View style={styles.lockIconContainer}>
-              <View style={styles.lockIconBackground}>
-                <Icon name="lock-closed" size={isLargeDevice ? 60 : 50} color="#ffffff" />
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={true}
+              // Prevent scrolling down by constraining content height
+              onScroll={(event) => {
+                const { contentOffset } = event.nativeEvent;
+                // The content is sized to fit the container, so scrolling down is naturally prevented
+              }}
+              scrollEventThrottle={16}
+            >
+              {/* Lock Icon */}
+              <View style={styles.lockIconContainer}>
+                <View style={styles.lockIconBackground}>
+                  <Icon name="lock-closed" size={isLargeDevice ? 60 : 50} color="#ffffff" />
+                </View>
               </View>
-            </View>
 
-            {/* Title */}
-            <Text style={styles.title}>Premium Content</Text>
-            
-            {/* Subtitle */}
-            <Text style={styles.subtitle}>
-              This episode is locked. Subscribe to unlock all premium content and enjoy unlimited streaming.
-            </Text>
-
-            {/* Features List */}
-            <View style={styles.featuresContainer}>
-              <View style={styles.featureItem}>
-                <Icon name="checkmark-circle" size={20} color="#4ade80" />
-                <Text style={styles.featureText}>Unlock all episodes</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Icon name="checkmark-circle" size={20} color="#4ade80" />
-                <Text style={styles.featureText}>Ad-free experience</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Icon name="checkmark-circle" size={20} color="#4ade80" />
-                <Text style={styles.featureText}>HD quality streaming</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Icon name="checkmark-circle" size={20} color="#4ade80" />
-                <Text style={styles.featureText}>Download for offline</Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
-              {!isUserLoggedIn ? (
-                <TouchableOpacity style={styles.signInButton} onPress={onSignIn}>
-                  <Text style={styles.signInButtonText}>Sign In</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.subscribeButton} onPress={onSubscribe}>
-                  <LinearGradient
-                    colors={['#ED9B72', '#7D2537']}
-                    style={styles.subscribeGradient}
-                  >
-                    <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
+              {/* Title */}
+              <Text style={styles.title}>Premium Content</Text>
               
-              <TouchableOpacity style={styles.cancelButton} onPress={onMaybeLater}>
-                <Text style={styles.cancelButtonText}>Maybe Later</Text>
-              </TouchableOpacity>
-            </View>
+              {/* Subtitle */}
+              <Text style={styles.subtitle}>
+                This episode is locked. Subscribe to unlock all premium content and enjoy unlimited streaming.
+              </Text>
+
+              {/* Features List */}
+              <View style={styles.featuresContainer}>
+                <View style={styles.featureItem}>
+                  <Icon name="checkmark-circle" size={20} color="#4ade80" />
+                  <Text style={styles.featureText}>Unlock all episodes</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Icon name="checkmark-circle" size={20} color="#4ade80" />
+                  <Text style={styles.featureText}>Ad-free experience</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Icon name="checkmark-circle" size={20} color="#4ade80" />
+                  <Text style={styles.featureText}>HD quality streaming</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Icon name="checkmark-circle" size={20} color="#4ade80" />
+                  <Text style={styles.featureText}>Download for offline</Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.buttonContainer}>
+                {!isUserLoggedIn ? (
+                  <TouchableOpacity style={styles.signInButton} onPress={onSignIn}>
+                    <Text style={styles.signInButtonText}>Sign In</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.subscribeButton} onPress={onSubscribe}>
+                    <LinearGradient
+                      colors={['#ED9B72', '#7D2537']}
+                      style={styles.subscribeGradient}
+                    >
+                      <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+                
+                <TouchableOpacity style={styles.cancelButton} onPress={onMaybeLater}>
+                  <Text style={styles.cancelButtonText}>Maybe Later</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </LinearGradient>
         </View>
       </View>
@@ -118,14 +130,23 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: width * 0.9,
     maxWidth: 400,
+    maxHeight: height * 0.8, // Limit height to prevent overflow
     borderRadius: 20,
     overflow: 'hidden',
   },
   gradientContainer: {
+    flex: 1,
     padding: 30,
-    alignItems: 'center',
   },
-
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100%', // Ensure content fills the container
+  },
   lockIconContainer: {
     marginBottom: 20,
   },
