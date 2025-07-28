@@ -11,9 +11,8 @@ import { AppState, AppStateStatus } from 'react-native';
 import RootNavigator from './src/navigation/RootNavigator';
 import ThemesContext from './src/context/ThemeContext';
 import QueryClientProvider from './src/app/QueryClientProvider';
-
-
 import { setReactNativeReady } from './src/lib/mmkv';
+import { initializeAuth } from './src/store/auth.store';
 
 function App(): React.JSX.Element {
   const [isRNReady, setIsRNReady] = useState(false);
@@ -22,15 +21,21 @@ function App(): React.JSX.Element {
 
   
   useEffect(() => {
-
     console.log('[APP DEBUG] App component mounted');
-    console.log('[APP DEBUG] Testing ad system initialization...');
     
     // Ensure React Native is ready before initializing MMKV
     const timer = setTimeout(() => {
       setIsRNReady(true);
       setReactNativeReady(true);
       console.log('[APP DEBUG] React Native is ready, MMKV can be initialized');
+      
+      // Initialize auth from MMKV storage
+      try {
+        initializeAuth();
+        console.log('[APP DEBUG] Auth initialization completed');
+      } catch (error) {
+        console.error('[APP DEBUG] Auth initialization failed:', error);
+      }
     }, 500); // Increased delay to ensure React Native is fully ready
     
     return () => clearTimeout(timer);

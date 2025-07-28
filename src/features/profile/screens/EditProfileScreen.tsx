@@ -198,10 +198,16 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
 
               console.log('🔧 Updating profile with data:', updateData);
         console.log('👤 User ID:', user._id);
-        console.log('🔍 User ID type:', typeof user._id);
+                console.log('🔍 User ID type:', typeof user._id);
         console.log('🔍 User ID length:', user._id?.length);
 
-              // Test API endpoint first
+        // Check current token status
+        const currentToken = useAuthStore.getState().token;
+        console.log('🔑 Current access token:', currentToken ? 'Present' : 'Missing');
+        console.log('🔑 Token length:', currentToken?.length || 0);
+        console.log('🔑 Token preview:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
+
+        // Test API endpoint first
         console.log('🧪 Testing API endpoint reachability...');
         try {
           const testResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/content/activeCountries`, {
@@ -214,6 +220,26 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           console.log('✅ API endpoint test successful:', testData.success);
         } catch (testError: any) {
           console.log('⚠️ API endpoint test failed:', testError.message);
+        }
+
+        // Test authenticated endpoint to verify token
+        console.log('🔐 Testing authenticated endpoint...');
+        try {
+          const authTestResponse = await fetch(`https://k9456pbd.rocketreel.co.in/api/v1/user/byId/${user._id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'accesstoken': currentToken || '',
+            },
+          });
+          const authTestData = await authTestResponse.json();
+          console.log('🔐 Auth test response:', {
+            status: authTestResponse.status,
+            success: authTestData.success,
+            message: authTestData.message,
+          });
+        } catch (authTestError: any) {
+          console.log('⚠️ Auth test failed:', authTestError.message);
         }
 
         // Try with minimal data first (based on API test results showing success with minimal data)
@@ -414,87 +440,87 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           onPress={() => Keyboard.dismiss()}
           activeOpacity={1}
         >
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Profile Avatar */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Profile Avatar */}
             <View style={styles.profileSection}>
               <View style={styles.profileContainer}>
-                {formData.profileImg ? (
-                  <Image
-                    source={{ uri: formData.profileImg }}
+            {formData.profileImg ? (
+              <Image
+                source={{ uri: formData.profileImg }}
                     style={styles.profileImage}
-                  />
-                ) : (
+              />
+            ) : (
                   <Text style={styles.profileInitial}>{getFirstLetter()}</Text>
                 )}
               </View>
-            </View>
+          </View>
 
-            {/* Form Fields */}
+          {/* Form Fields */}
             <View style={styles.formSection}>
               <Text style={styles.sectionTitle}>Personal Information</Text>
 
-              {/* Full Name */}
+            {/* Full Name */}
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.textInput}
-                  value={formData.userName}
-                  onChangeText={(value) => handleInputChange('userName', value)}
+              value={formData.userName}
+              onChangeText={(value) => handleInputChange('userName', value)}
                   placeholder="Full Name"
                   placeholderTextColor="#999"
-                  maxLength={50}
-                />
+              maxLength={50}
+            />
               </View>
 
               {/* Mobile Number with Country Code */}
-              <View style={styles.phoneContainer}>
-                <View style={styles.countryCodeContainer}>
-                  <Text style={styles.countryCodeText}>
-                    {formData.callingCode}
-                  </Text>
-                </View>
+            <View style={styles.phoneContainer}>
+              <View style={styles.countryCodeContainer}>
+                <Text style={styles.countryCodeText}>
+                  {formData.callingCode}
+                </Text>
+              </View>
                 <View style={[styles.inputContainer, { flex: 1, marginLeft: 10 }]}>
                   <TextInput
                     style={styles.textInput}
-                    value={formData.mobileNo}
-                    onChangeText={(value) => handleInputChange('mobileNo', value)}
-                    placeholder="Mobile Number"
+                value={formData.mobileNo}
+                onChangeText={(value) => handleInputChange('mobileNo', value)}
+                placeholder="Mobile Number"
                     placeholderTextColor="#999"
-                    maxLength={15}
-                    keyboardType="numeric"
-                  />
+                maxLength={15}
+                keyboardType="numeric"
+              />
                 </View>
-              </View>
+            </View>
 
-              {/* Email */}
+            {/* Email */}
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.textInput}
-                  value={formData.userEmail}
-                  onChangeText={(value) => handleInputChange('userEmail', value)}
+              value={formData.userEmail}
+              onChangeText={(value) => handleInputChange('userEmail', value)}
                   placeholder="Email Address"
                   placeholderTextColor="#999"
-                  maxLength={100}
-                  keyboardType="email-address"
-                />
+              maxLength={100}
+              keyboardType="email-address"
+            />
               </View>
 
-              {/* Date of Birth */}
+            {/* Date of Birth */}
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setIsDatePickerVisible(true)}
               >
                                  <View style={styles.dateButtonContent}>
-                   <Text style={[
-                     styles.dateButtonText,
-                     !formData.dateOfBirth && styles.placeholderText
-                   ]}>
-                     {formData.dateOfBirth || 'Select Date of Birth'}
-                   </Text>
+                <Text style={[
+                  styles.dateButtonText,
+                  !formData.dateOfBirth && styles.placeholderText
+                ]}>
+                  {formData.dateOfBirth || 'Select Date of Birth'}
+                </Text>
                    <SvgIcons name="calendar-outline" color="#ffffff" size={20} />
                  </View>
               </TouchableOpacity>
@@ -521,23 +547,23 @@ const EditProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
+            </View>
 
                              {/* Referral Code - Temporarily disabled due to API validation issues */}
                {/* <View style={styles.inputContainer}>
                  <TextInput
                    style={styles.textInput}
-                   value={formData.referralCode}
-                   onChangeText={(value) => handleInputChange('referralCode', value)}
+              value={formData.referralCode}
+              onChangeText={(value) => handleInputChange('referralCode', value)}
                    placeholder="Referral Code (Optional)"
                    placeholderTextColor="#999"
-                   maxLength={20}
-                 />
+              maxLength={20}
+            />
                </View> */}
             </View>
           </ScrollView>
 
-          {/* Update Button */}
+            {/* Update Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.updateButton, loading && styles.buttonDisabled]}

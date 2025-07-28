@@ -5,6 +5,7 @@ export const API_CONFIG = {
     : 'https://k9456pbd.rocketreel.co.in/api/v1',
   TIMEOUT: 30000, // Increased from 10s to 30s
   AUTH_TIMEOUT: 45000, // Special timeout for auth requests
+  SUBSCRIPTION_TIMEOUT: 60000, // Special timeout for subscription requests
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
 };

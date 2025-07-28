@@ -1012,7 +1012,7 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
 
   return (
     <>
-      <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} />
+      {/* <PerformanceMonitor enabled={__DEV__} showMetrics={__DEV__} /> */}
       
       {/* Debug Button */}
       <TouchableOpacity

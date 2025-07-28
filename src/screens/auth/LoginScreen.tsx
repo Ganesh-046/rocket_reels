@@ -277,6 +277,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           if (response.data.isNew) {
             setUserId(response.data.userId);
             setToken(response.data.token);
+
             setStep(3);
           } else {
             // Existing user - login directly

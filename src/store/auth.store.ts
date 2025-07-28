@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile } from '../types/api';
 import MMKVStorage from '../lib/mmkv';
+import TokenManager from '../utils/tokenManager';
 
 // Auth State Interface
 interface AuthState {
@@ -47,12 +48,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setToken: (token) => {
-        console.log('AuthStore', 'setToken', { hasToken: !!token });
+        console.log('🔐 AuthStore - setToken:', { 
+          hasToken: !!token,
+          tokenLength: token?.length || 0,
+          tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+          timestamp: new Date().toISOString()
+        });
         set({ token });
         if (token) {
-          MMKVStorage.setToken(token);
+          TokenManager.storeToken(token);
         } else {
-          MMKVStorage.removeToken();
+          TokenManager.clearToken();
         }
       },
 
@@ -73,6 +79,8 @@ export const useAuthStore = create<AuthState>()(
           userId: user._id,
           userName: user.userName,
           userEmail: user.userEmail,
+          tokenLength: token.length,
+          tokenPreview: token.substring(0, 20) + '...',
           timestamp: new Date().toISOString()
         });
         set({
@@ -82,14 +90,22 @@ export const useAuthStore = create<AuthState>()(
           isNewUser: false,
         });
         
-        // Store in MMKV
+        // Store in MMKV and setup token management
         MMKVStorage.setAuthData(user, token);
-        console.log('💾 AuthStore - Data stored in MMKV');
+        TokenManager.storeToken(token);
+        TokenManager.setupAutoRefresh();
+        console.log('💾 AuthStore - Data stored in MMKV and token management setup');
       },
 
       logout: () => {
         const currentUser = get().user;
-        console.log('AuthStore', 'logout', { userId: currentUser?._id });
+        const currentToken = get().token;
+        console.log('🔐 AuthStore - Logout:', { 
+          userId: currentUser?._id,
+          tokenLength: currentToken?.length || 0,
+          tokenPreview: currentToken ? currentToken.substring(0, 20) + '...' : 'none',
+          timestamp: new Date().toISOString()
+        });
         set({
           user: null,
           token: null,
@@ -98,8 +114,10 @@ export const useAuthStore = create<AuthState>()(
           isNewUser: false,
         });
         
-        // Clear from MMKV
+        // Clear from MMKV and stop token management
         MMKVStorage.removeAuthData();
+        TokenManager.clearToken();
+        TokenManager.stopAutoRefresh();
       },
 
       updateUser: (userData) => {
@@ -120,8 +138,10 @@ export const useAuthStore = create<AuthState>()(
           isNewUser: false,
         });
         
-        // Clear from MMKV
+        // Clear from MMKV and stop token management
         MMKVStorage.removeAuthData();
+        TokenManager.clearToken();
+        TokenManager.stopAutoRefresh();
       },
     }),
     {
@@ -175,8 +195,18 @@ export const useAuthState = () => useAuthStore();
 
 // Initialize auth from MMKV on app start
 export const initializeAuth = () => {
+  console.log('🔐 AuthStore - Initializing auth from MMKV...');
   const authData = MMKVStorage.getAuthData();
   if (authData && authData.user && authData.token) {
+    console.log('🔐 AuthStore - Found stored auth data:', {
+      userId: authData.user._id,
+      userName: authData.user.userName,
+      tokenLength: authData.token.length,
+      tokenPreview: authData.token.substring(0, 20) + '...',
+      timestamp: new Date().toISOString()
+    });
     useAuthStore.getState().login(authData.user, authData.token);
+  } else {
+    console.log('🔐 AuthStore - No stored auth data found');
   }
 }; 
