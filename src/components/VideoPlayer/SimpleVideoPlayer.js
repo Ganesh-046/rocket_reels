@@ -5,14 +5,18 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import Video from 'react-native-video';
+import iosVideoDebugger from '../../utils/iosVideoDebugger';
+import iosVideoPerformanceOptimizer from '../../utils/iosVideoPerformanceOptimizer';
 
 const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
   const videoRef = useRef(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(null);
+  const loadStartTime = useRef(0);
 
   // Simple URL construction
   const getVideoUrl = () => {
@@ -27,6 +31,16 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
   };
 
   const videoUrl = getVideoUrl();
+
+  // Check for iOS-specific issues
+  useEffect(() => {
+    if (Platform.OS === 'ios' && videoUrl) {
+      const issues = iosVideoDebugger.checkCommonIOSIssues(videoUrl);
+      if (issues.length > 0) {
+        console.log('⚠️ iOS Video Issues Detected:', issues);
+      }
+    }
+  }, [videoUrl]);
 
   // 🔑 CRITICAL: Cleanup video when component unmounts or episode changes
   useEffect(() => {
@@ -48,6 +62,7 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
     setIsVideoReady(false);
     setIsBuffering(false);
     setError(null);
+    loadStartTime.current = Date.now();
   }, [episode?._id]);
 
   if (!videoUrl) {
@@ -58,17 +73,53 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
     );
   }
 
+  // Get iOS-optimized video source
+  const getOptimizedVideoSource = () => {
+    if (Platform.OS === 'ios') {
+      return iosVideoPerformanceOptimizer.getOptimizedVideoSource(videoUrl, episode?._id);
+    }
+    
+    // Default configuration for Android
+    return {
+      uri: videoUrl,
+      type: videoUrl.includes('.m3u8') ? 'm3u8' : undefined,
+      headers: {
+        'User-Agent': 'RocketReel/1.0',
+        'Accept': 'application/vnd.apple.mpegurl, application/x-mpegURL, video/mp2t, video/mp4, video/*',
+      },
+    };
+  };
+
   const handleLoad = (data) => {
+    const loadTime = Date.now() - loadStartTime.current;
+    
     console.log('✅ SimpleVideoPlayer - Video Loaded:', {
       episodeId: episode?._id,
       duration: data.duration,
+      platform: Platform.OS,
+      loadTime: `${loadTime}ms`,
+      videoUrl: videoUrl?.substring(0, 100) + '...',
     });
     setIsVideoReady(true);
     setError(null);
+    
+    // iOS-specific loading debug and performance tracking
+    if (Platform.OS === 'ios') {
+      iosVideoDebugger.logVideoLoad(data, videoUrl, episode?._id);
+      iosVideoPerformanceOptimizer.trackVideoLoad(episode?._id, loadStartTime.current);
+    }
   };
 
   const handleReadyForDisplay = () => {
-    console.log('🎬 SimpleVideoPlayer - Video Ready:', episode?._id);
+    console.log('🎬 SimpleVideoPlayer - Video Ready:', {
+      episodeId: episode?._id,
+      platform: Platform.OS,
+    });
+    
+    // iOS-specific ready debug
+    if (Platform.OS === 'ios') {
+      iosVideoDebugger.logVideoReady(episode?._id);
+    }
   };
 
   const handleProgress = (data) => {
@@ -77,6 +128,11 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
 
   const handleBuffer = (data) => {
     setIsBuffering(data.isBuffering);
+    
+    // iOS-specific buffer debug
+    if (Platform.OS === 'ios') {
+      iosVideoDebugger.logVideoBuffer(data.isBuffering, episode?._id);
+    }
   };
 
   const handleEnd = () => {
@@ -87,9 +143,25 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
     console.error('❌ SimpleVideoPlayer - Video Error:', {
       episodeId: episode?._id,
       error: error.error,
+      errorString: error.errorString,
+      platform: Platform.OS,
+      videoUrl: videoUrl?.substring(0, 100) + '...',
     });
     setError(error);
     setIsVideoReady(false);
+    
+    // iOS-specific error handling
+    if (Platform.OS === 'ios') {
+      iosVideoDebugger.logVideoError(error, videoUrl, episode?._id);
+    }
+  };
+
+  // Get iOS-optimized video player props
+  const getIOSVideoPlayerProps = () => {
+    if (Platform.OS === 'ios') {
+      return iosVideoPerformanceOptimizer.getIOSVideoPlayerProps();
+    }
+    return {};
   };
 
   return (
@@ -97,14 +169,7 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
       {/* Video Player */}
       <Video
         ref={videoRef}
-        source={{
-          uri: videoUrl,
-          type: videoUrl.includes('.m3u8') ? 'm3u8' : undefined,
-          headers: {
-            'User-Agent': 'RocketReel/1.0',
-            'Accept': 'application/vnd.apple.mpegurl, application/x-mpegURL, video/mp2t, video/mp4, video/*',
-          },
-        }}
+        source={getOptimizedVideoSource()}
         style={styles.video}
         resizeMode="cover"
         repeat={true}
@@ -120,20 +185,25 @@ const SimpleVideoPlayer = ({ episode, isPlaying = true, style }) => {
         onEnd={handleEnd}
         onError={handleError}
         controls={false}
-        progressUpdateInterval={1000}
-        reportBandwidth={true}
+        progressUpdateInterval={Platform.OS === 'ios' ? 100 : 1000}
+        reportBandwidth={Platform.OS !== 'ios'} // Disable on iOS for performance
         preventsDisplaySleepDuringVideoPlayback={true}
-        automaticallyWaitsToMinimizeStalling={false}
+        automaticallyWaitsToMinimizeStalling={Platform.OS !== 'ios'} // Disable on iOS for faster start
         poster={episode?.thumbnail}
         posterResizeMode="cover"
-        // 🔑 CRITICAL: Memory management props
-        bufferConfig={{
-          minBufferMs: 1000,
-          maxBufferMs: 5000,
-          bufferForPlaybackMs: 500,
-          bufferForPlaybackAfterRebufferMs: 1000,
-        }}
-        maxBitRate={2000000} // Limit bitrate to prevent memory issues
+        // iOS-optimized buffer configuration
+        bufferConfig={Platform.OS === 'ios' 
+          ? iosVideoPerformanceOptimizer.getOptimizedBufferConfig()
+          : {
+              minBufferMs: 1000,
+              maxBufferMs: 5000,
+              bufferForPlaybackMs: 500,
+              bufferForPlaybackAfterRebufferMs: 1000,
+            }
+        }
+        maxBitRate={Platform.OS === 'ios' ? 2000000 : 2000000} // 2Mbps for iOS
+        // iOS-specific optimizations
+        {...getIOSVideoPlayerProps()}
       />
 
       {/* Thumbnail Overlay - Show while video not ready */}

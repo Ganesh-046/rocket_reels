@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Video from 'react-native-video';
 import { useSharedValue, withTiming, runOnJS, Animated } from 'react-native-reanimated';
+import iosVideoPerformanceOptimizer from '../../utils/iosVideoPerformanceOptimizer';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -90,9 +91,13 @@ const InstagramOptimizedVideoPlayer = ({ episode, isPlaying = true, style, isScr
 
   const videoUrl = getOptimizedVideoUrl();
 
-  // Instagram-level video source configuration
+  // Instagram-level video source configuration with iOS optimization
   const optimizedVideoSource = useMemo(() => {
     if (!videoUrl) return null;
+
+    if (Platform.OS === 'ios') {
+      return iosVideoPerformanceOptimizer.getOptimizedVideoSource(videoUrl, episode?._id);
+    }
 
     return {
       uri: videoUrl,
@@ -104,15 +109,21 @@ const InstagramOptimizedVideoPlayer = ({ episode, isPlaying = true, style, isScr
         'Accept-Encoding': 'gzip, deflate',
       },
     };
-  }, [videoUrl]);
+  }, [videoUrl, episode?._id]);
 
-  // Instagram-level buffer configuration
-  const optimizedBufferConfig = useMemo(() => ({
-    minBufferMs: 500, // Reduced for faster start
-    maxBufferMs: 2000, // Reduced for memory efficiency
-    bufferForPlaybackMs: 100, // Reduced for immediate playback
-    bufferForPlaybackAfterRebufferMs: 500, // Reduced for faster recovery
-  }), []);
+  // Instagram-level buffer configuration with iOS optimization
+  const optimizedBufferConfig = useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return iosVideoPerformanceOptimizer.getOptimizedBufferConfig();
+    }
+
+    return {
+      minBufferMs: 500,
+      maxBufferMs: 2000,
+      bufferForPlaybackMs: 100,
+      bufferForPlaybackAfterRebufferMs: 500,
+    };
+  }, []);
 
   // 🔑 CRITICAL: Instagram-level memory management
   useEffect(() => {
@@ -168,22 +179,24 @@ const InstagramOptimizedVideoPlayer = ({ episode, isPlaying = true, style, isScr
   // Instagram-level event handlers
   const handleLoad = useCallback((data) => {
     const loadTime = Date.now() - loadStartTime;
-    console.log('✅ InstagramVideoPlayer - Video Loaded:', {
+    
+    console.log('✅ InstagramOptimizedVideoPlayer - Video Loaded:', {
       episodeId: episode?._id,
       duration: data.duration,
-      loadTime: `${loadTime}ms`, // Target: <500ms
+      loadTime: `${loadTime}ms`,
+      platform: Platform.OS,
     });
     
     setIsVideoReady(true);
     setError(null);
     
-    // Smooth thumbnail fade out
-    thumbnailOpacity.value = withTiming(0, { duration: 200 });
-    
-    // Add to instance pool
-    if (episode?._id) {
-      videoInstancePool.addInstance(episode._id, { ref: videoRef.current, data });
+    // Track iOS performance
+    if (Platform.OS === 'ios') {
+      iosVideoPerformanceOptimizer.trackVideoLoad(episode?._id, loadStartTime);
     }
+    
+    // Instagram-level thumbnail fade out
+    thumbnailOpacity.value = withTiming(0, { duration: 300 });
   }, [episode?._id, loadStartTime, thumbnailOpacity]);
 
   const handleReadyForDisplay = useCallback(() => {
@@ -245,19 +258,18 @@ const InstagramOptimizedVideoPlayer = ({ episode, isPlaying = true, style, isScr
         onEnd={handleEnd}
         onError={handleError}
         controls={false}
-        progressUpdateInterval={500} // Reduced for smoother progress
-        reportBandwidth={true}
+        progressUpdateInterval={Platform.OS === 'ios' ? 100 : 500} // Reduced for smoother progress
+        reportBandwidth={Platform.OS !== 'ios'} // Disable on iOS for performance
         preventsDisplaySleepDuringVideoPlayback={true}
-        automaticallyWaitsToMinimizeStalling={false} // Disabled for immediate playback
+        automaticallyWaitsToMinimizeStalling={Platform.OS !== 'ios'} // Disabled for immediate playback
         poster={episode?.thumbnail}
         posterResizeMode="cover"
         // Instagram-level memory management props
         bufferConfig={optimizedBufferConfig}
-        maxBitRate={1500000} // Reduced bitrate for better performance
+        maxBitRate={Platform.OS === 'ios' ? 2000000 : 1500000} // Optimized bitrate for iOS
         // Platform-specific optimizations
         {...(Platform.OS === 'ios' ? {
-          allowsExternalPlayback: false,
-          automaticallyWaitsToMinimizeStalling: false,
+          ...iosVideoPerformanceOptimizer.getIOSVideoPlayerProps(),
         } : {
           useTextureView: true,
           bufferType: 'surface',
