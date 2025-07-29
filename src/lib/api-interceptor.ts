@@ -139,7 +139,7 @@ class ApiInterceptor {
 
     // Add authorization header for private requests
     if (!isPublic && token) {
-      headers['accesstoken'] = `Bearer ${token}`;
+      headers['accesstoken'] = token;
     }
 
     // Add device information

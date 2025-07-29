@@ -34,6 +34,8 @@ import EmptyMessage from '../components/common/EmptyMessage';
 import MasonryCard from '../components/Cards/MasonryCard';
 import MovieCard from '../components/Cards/MovieCard';
 import RecentCard from '../components/Cards/RecentCard';
+import MMKVStorage from '../lib/mmkv';
+import { useBalance } from '../hooks/useBalance';
 
 // Font constants
 const APP_FONT_BOLD = 'System-Bold';
@@ -224,6 +226,37 @@ const styles = (theme: any, isLargeDevice: boolean, width: number, height: numbe
     marginLeft: 8,
     opacity: 0.7,
   },
+  balanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: isLargeDevice ? width * .015 : width * 0.03,
+    paddingVertical: isLargeDevice ? width * .005 : width * 0.01,
+    borderRadius: 8,
+    backgroundColor: theme.colors.PRIMARYLIGHTBLACKONE,
+    marginTop: isLargeDevice ? width * .005 : width * 0.01,
+    marginHorizontal: isLargeDevice ? width * .01 : width * 0.02,
+  },
+  balanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  balanceText: {
+    color: theme.colors.PRIMARYWHITE,
+    fontSize: appFonts.APP_FONT_SIZE_35,
+    fontFamily: APP_FONT_BOLD,
+    marginRight: isLargeDevice ? width * .005 : width * 0.01,
+  },
+  balanceRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  balanceAmount: {
+    color: theme.colors.PRIMARYBG,
+    fontSize: appFonts.APP_FONT_SIZE_35,
+    fontFamily: APP_FONT_BOLD,
+    marginLeft: isLargeDevice ? width * .005 : width * 0.01,
+  },
 });
 
 // Optimized HomeScreen component
@@ -254,6 +287,60 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   // Auth state
   const { user, isAuthenticated } = useAuthState();
 
+  // Debug: Check authentication state and token
+  useEffect(() => {
+    console.log('🔐 HomeScreen Auth Debug:', {
+      isAuthenticated,
+      userId: user?._id,
+      userName: user?.userName,
+      userEmail: user?.userEmail,
+      hasUser: !!user,
+    });
+
+    // Check token in MMKV storage
+    const token = MMKVStorage.getToken();
+    console.log('🔑 Token Debug:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token',
+    });
+
+    // Check auth data in MMKV
+    const authData = MMKVStorage.getAuthData();
+    console.log('💾 MMKV Auth Data:', {
+      hasAuthData: !!authData,
+      hasUser: !!authData?.user,
+      hasToken: !!authData?.token,
+    });
+
+    // Add global debug function
+    (global as any).checkAuth = () => {
+      const token = MMKVStorage.getToken();
+      const user = MMKVStorage.getUser();
+      const authData = MMKVStorage.getAuthData();
+      
+      console.log('🔍 GLOBAL AUTH CHECK:', {
+        isAuthenticated,
+        hasUser: !!user,
+        hasToken: !!token,
+        hasAuthData: !!authData,
+        tokenPreview: token ? `${token.substring(0, 30)}...` : 'No token',
+        userId: user?._id,
+      });
+      
+      return { isAuthenticated, hasUser: !!user, hasToken: !!token };
+    };
+
+    // Add global function to restore auth
+    (global as any).restoreAuth = () => {
+      console.log('🔄 Manually restoring auth...');
+      const { initializeAuth } = require('../store/auth.store');
+      initializeAuth();
+      console.log('✅ Auth restoration completed');
+    };
+
+  }, [isAuthenticated, user]);
+
   // Theme and styling
   const { theme: { colors } } = useTheme();
   const style = useThemedStyles(styles);
@@ -277,6 +364,9 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   const [errors, setErrors] = useState<Record<string, any>>({});
   const [baseGradientColors, setBaseGradientColors] = useState(DEFAULT_GRADIENT_COLORS);
   const [retryCount, setRetryCount] = useState(0);
+
+  // Balance hook
+  const { totalCoins, loading: balanceLoading, error: balanceError, refreshBalance } = useBalance();
 
   // Enhanced refs
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -780,6 +870,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     refetchLatestContent,
     refetchCustomizedContent,
     refetchUpcomingContent,
+    refreshBalance,
   ], () => {
     colorCache.current.clear();
     setErrors({});
@@ -943,6 +1034,37 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   // Show empty state when no data is available
   const hasNoData = !isLoading && !contentListData?.data?.result?.length && !bannerData?.data?.length && !topContentData?.data?.top?.length;
 
+  // Debug component to show auth status
+  const DebugAuthStatus = () => {
+    const token = MMKVStorage.getToken();
+    const authData = MMKVStorage.getAuthData();
+    
+    return (
+      <View style={{
+        position: 'absolute',
+        top: 100,
+        right: 10,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        padding: 10,
+        borderRadius: 8,
+        zIndex: 1000,
+      }}>
+        <Text style={{ color: 'white', fontSize: 10 }}>
+          🔐 Auth: {isAuthenticated ? '✅' : '❌'}
+        </Text>
+        <Text style={{ color: 'white', fontSize: 10 }}>
+          👤 User: {user?._id ? '✅' : '❌'}
+        </Text>
+        <Text style={{ color: 'white', fontSize: 10 }}>
+          🔑 Token: {token ? '✅' : '❌'}
+        </Text>
+        <Text style={{ color: 'white', fontSize: 10 }}>
+          💾 MMKV: {authData ? '✅' : '❌'}
+        </Text>
+      </View>
+    );
+  };
+
   // Render content based on loading states
   if (isInitialLoading) {
     return <ActivityLoader />;
@@ -954,6 +1076,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
         marginTop: insets.top,
         marginBottom: isHide ? tabBarHeight : 0
       }]}>
+        <DebugAuthStatus />
         <Animated.ScrollView
           scrollEventThrottle={16}
           onScroll={onScroll}
@@ -1067,36 +1190,62 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
                 strokeWidth={2}
               />
             </PressableButton>
+            
+            {/* Balance Display */}
+            {user && (
+              <PressableButton
+                onPress={() => navigation?.navigate('MyWallet')}
+                style={[style.directionContainer, style.balanceContainer]}
+                disabled={balanceLoading}
+              >
+                <View style={style.balanceLeft}>
+                  <Text style={style.balanceText}>Balance</Text>
+                  <SvgIcons
+                    name={'arrow-right'}
+                    color={colors.PRIMARYLIGHTBLACKONE}
+                    size={isLargeDevice ? width * .02 : width * 0.04}
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                  />
+                </View>
+                <View style={style.balanceRight}>
+                  <SvgIcons
+                    name={'coin'}
+                    color={colors.PRIMARYBG}
+                    size={isLargeDevice ? width * .03 : width * 0.06}
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                  />
+                  <Text style={style.balanceAmount}>
+                    {balanceLoading ? '...' : totalCoins}
+                  </Text>
+                </View>
+              </PressableButton>
+            )}
           </View>
 
           {/* Content based on selection */}
           {isSelected === 'all' ? (
             <View style={style.container}>
               {/* Banner Carousel */}
-              {(() => {
-                return banner_Data.length > 0 ? (
-                  <View style={{
-                    overflow: 'hidden',
-                    pointerEvents: 'box-none'
-                  }}>
-                    <BannerComponent
-                      banner_Data={banner_Data}
-                      baseGradientColors={baseGradientColors}
-                      currentBannerIndex={currentBannerIndex}
-                      setCurrentBannerIndex={setCurrentBannerIndex}
-                      navigation={navigation}
-                      onBannerScroll={handleBannerScroll}
-                      onBannerIndexChange={handleBannerIndexChange}
-                      onTouchStart={() => setIsBannerScrolling(true)}
-                      onTouchEnd={() => setIsBannerScrolling(false)}
-                    />
-                  </View>
-                ) : (
-                  (() => {
-                    return null;
-                  })()
-                );
-              })()}
+              {banner_Data.length > 0 ? (
+                <View style={{
+                  overflow: 'hidden',
+                  pointerEvents: 'box-none'
+                }}>
+                  <BannerComponent
+                    banner_Data={banner_Data}
+                    baseGradientColors={baseGradientColors}
+                    currentBannerIndex={currentBannerIndex}
+                    setCurrentBannerIndex={setCurrentBannerIndex}
+                    navigation={navigation}
+                    onBannerScroll={handleBannerScroll}
+                    onBannerIndexChange={handleBannerIndexChange}
+                    onTouchStart={() => setIsBannerScrolling(true)}
+                    onTouchEnd={() => setIsBannerScrolling(false)}
+                  />
+                </View>
+              ) : null}
 
               {/* Continue Watching */}
               {user && continueWatchingData.length > 0 && (
@@ -1105,7 +1254,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
                   data={continueWatchingData.slice(0, 10)}
                   onSeeAll={undefined}
                   renderItem={({ item, index }) => {
-                    if (!item) return <View />;
+                    if (!item) return <View style={{ display: 'none' }} />;
                     return (
                       <RecentCard
                         key={`recent-${item._id}-${index}`}
@@ -1129,7 +1278,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
                 data={filteredContentData?.topContentData?.slice(0, 10) || []}
                 onSeeAll={undefined}
                 renderItem={({ item, index }) => {
-                  if (!item) return <View />;
+                  if (!item) return <View style={{ display: 'none' }} />;
                   return (
                     <View key={`top-container-${item._id}-${index}`} style={style.topMovieContainer}>
                       <Text style={style.topMovieNumber}>{index + 1}</Text>
@@ -1149,7 +1298,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
                 colors={colors}
               />
 
-              <View style={{ height: 20 }}>  </View>
+              <View style={{ height: 20 }} />
 
               {/* New Shows */}
               <ContentSection
@@ -1157,7 +1306,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
                 data={filteredContentData?.latestContentData?.slice(0, isLargeDevice ? 3 : 4) || []}
                 onSeeAll={() => navigateToMovieList('New Shows', filteredContentData.latestContentData || [])}
                 renderItem={({ item, index }) => {
-                  if (!item) return <View />;
+                  if (!item) return <View style={{ display: 'none' }} />;
                   return (
                     <MovieCard
                       key={`movie-${item._id}-${index}`}
@@ -1177,14 +1326,14 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
 
               {/* All Shows */}
 
-              <View style={{ height: 20 }}>  </View>
+              <View style={{ height: 20 }} />
 
               <ContentSection
                 title="All Shows"
                 data={filteredContentData?.allContentData || []}
                 onSeeAll={() => navigateToMovieList('All Shows', filteredContentData.allContentData || [])}
                 renderItem={({ item, index }) => {
-                  if (!item) return <View />;
+                  if (!item) return <View style={{ display: 'none' }} />;
                   return (
                     <MovieCard
                       key={`movie-${item._id}-${index}`}

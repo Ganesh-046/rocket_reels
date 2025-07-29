@@ -25,6 +25,15 @@ export interface UserProfile {
   checkInStreak: number;
   checkInDate: string;
   profiles: UserProfileItem[];
+  // Subscription properties
+  isSubscriber?: boolean;
+  planDetails?: {
+    planName: string;
+    planDuration: number;
+    price: number;
+  };
+  subscriptionEndDate?: string;
+  subscriptionStartDate?: string;
 }
 
 export interface UserProfileItem {

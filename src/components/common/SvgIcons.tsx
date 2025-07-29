@@ -4,7 +4,15 @@ import useTheme from "../../hooks/useTheme";
 
 const { width } = Dimensions.get('window');
 
-export const SvgIcons = ({ name, color, size, viewBox, strokeWidth }) => {
+interface SvgIconsProps {
+  name: string;
+  color?: string;
+  size?: number;
+  viewBox?: string;
+  strokeWidth?: number;
+}
+
+export const SvgIcons: React.FC<SvgIconsProps> = ({ name, color, size, viewBox, strokeWidth }) => {
     const { theme: { colors: colors } } = useTheme()
 
     switch (name) {
@@ -1412,6 +1420,28 @@ export const SvgIcons = ({ name, color, size, viewBox, strokeWidth }) => {
                 viewBox={viewBox || '0 0 512 512'}
                 fill={color || colors.PRIMARYWHITE}>
                 <Path d="m511.7 243.4c.1-1.7 0-3.4-.3-5-20.4-56.9-60.5-63.5-107.1-63.5-18.2 0-37.4 1-56.9.4 12.6-62.2-10.6-142.9-74.1-161-27.8-9.5-56.9 9.8-57.8 40.5-.6 8.9-.6 17.8 0 26.7 1.9 21.9-2.2 43.4-12.6 65.6-9.4 20.8-21.5 45.9-36.5 60.8-4.5-7.2-12.5-11.6-21-11.6h-120.6c-13.7 0-24.8 11.1-24.8 24.8v254.1c0 13.7 11.1 24.8 24.8 24.8h120.5c7 0 13.7-3 18.4-8.1 11.6 5.2 24.2 7.9 37 7.8 67.5.1 134.7 0 202.8.3 19.8.1 35.3-8.1 43.4-23.2 8.7-16.9 14.4-34.4 20.5-52 17-17.9 24.5-44.7 26.7-73.7 10.7-14.2 14.7-31.6 11.5-50.2-2.1-12.5.6-24.1 5.5-37.7 1.5-5.4.8-13.4.6-19.8zm-394 204.3h-65.3v-198.9h65.3z" />
+            </Svg>
+        )
+
+        case 'restore': return (
+            <Svg
+                width={size || width * .07}
+                height={size || width * .07}
+                viewBox={viewBox || '0 0 24 24'}
+                fill={color || colors.PRIMARYWHITE}>
+                <Path d="m12 2c-5.514 0-10 4.486-10 10s4.486 10 10 10 10-4.486 10-10-4.486-10-10-10zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z" />
+                <Path d="m12 6c-3.314 0-6 2.686-6 6s2.686 6 6 6 6-2.686 6-6-2.686-6-6-6zm0 10c-2.206 0-4-1.794-4-4s1.794-4 4-4 4 1.794 4 4-1.794 4-4 4z" />
+                <Path d="m12 8c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2z" />
+            </Svg>
+        )
+
+        case 'check-circle': return (
+            <Svg
+                width={size || width * .07}
+                height={size || width * .07}
+                viewBox={viewBox || '0 0 24 24'}
+                fill={color || colors.PRIMARYWHITE}>
+                <Path d="m12 2c-5.514 0-10 4.486-10 10s4.486 10 10 10 10-4.486 10-10-4.486-10-10-10zm-1.293 14.707-4.293-4.293 1.414-1.414 2.879 2.879 6.879-6.879 1.414 1.414z" />
             </Svg>
         )
 

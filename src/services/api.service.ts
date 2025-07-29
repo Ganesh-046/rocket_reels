@@ -323,17 +323,27 @@ class ApiService {
   }
 
   async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    const response = await this.api.get(ENDPOINTS.SUBSCRIPTION.PLANS);
+    const response = await this.api.get(ENDPOINTS.REWARDS.SUBSCRIPTION_PLANS);
+    return response.data;
+  }
+
+  async getCurrentSubscription(): Promise<ApiResponse<any>> {
+    const response = await this.api.get(ENDPOINTS.REWARDS.CURRENT_SUBSCRIPTION);
     return response.data;
   }
 
   async getVIPSubscriptions(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    const response = await this.api.get(ENDPOINTS.SUBSCRIPTION.VIP_SUBSCRIPTIONS);
+    const response = await this.api.get(ENDPOINTS.REWARDS.VIP_PLANS);
     return response.data;
   }
 
   async purchaseSubscription(data: PurchaseSubscriptionRequest): Promise<ApiResponse<{ message: string; orderId: string }>> {
-    const response = await this.api.post(ENDPOINTS.SUBSCRIPTION.PURCHASE, data);
+    const response = await this.api.post(ENDPOINTS.REWARDS.SUBSCRIPTION_PURCHASE, data);
+    return response.data;
+  }
+
+  async updateSubscriptionStatus(data: { orderId: string; status: string; transactionId?: string }): Promise<ApiResponse<{ message: string }>> {
+    const response = await this.api.post(ENDPOINTS.REWARDS.SUBSCRIPTION_STATUS, data);
     return response.data;
   }
 
@@ -383,7 +393,7 @@ class ApiService {
   }
 
   async getUnlockedEpisodes(userId: string): Promise<ApiResponse<UnlockedEpisode[]>> {
-    const response = await this.api.get(ENDPOINTS.REWARDS.UNLOCKED_EPISODES);
+    const response = await this.api.get(ENDPOINTS.REWARDS.GET_UNLOCKED_EPISODE);
     return response.data;
   }
 
@@ -509,6 +519,7 @@ export const {
   getCheckInList,
   dailyCheckIn,
   getSubscriptionPlans,
+  getCurrentSubscription,
   getVIPSubscriptions,
   purchaseSubscription,
   getRechargeList,

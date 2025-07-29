@@ -89,7 +89,12 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         const currentUser = get().user;
-        console.log('AuthStore', 'logout', { userId: currentUser?._id });
+        console.log('🔐 AuthStore - Logout:', { 
+          userId: currentUser?._id,
+          userName: currentUser?.userName,
+          timestamp: new Date().toISOString()
+        });
+        
         set({
           user: null,
           token: null,
@@ -98,8 +103,9 @@ export const useAuthStore = create<AuthState>()(
           isNewUser: false,
         });
         
-        // Clear from MMKV
-        MMKVStorage.removeAuthData();
+        // Clear all MMKV data
+        MMKVStorage.clearAll();
+        console.log('🗑️ AuthStore - All MMKV data cleared');
       },
 
       updateUser: (userData) => {
@@ -112,6 +118,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
+        console.log('🔐 AuthStore - Clear Auth');
         set({
           user: null,
           token: null,
@@ -120,8 +127,9 @@ export const useAuthStore = create<AuthState>()(
           isNewUser: false,
         });
         
-        // Clear from MMKV
-        MMKVStorage.removeAuthData();
+        // Clear all MMKV data
+        MMKVStorage.clearAll();
+        console.log('🗑️ AuthStore - All MMKV data cleared');
       },
     }),
     {
@@ -175,8 +183,62 @@ export const useAuthState = () => useAuthStore();
 
 // Initialize auth from MMKV on app start
 export const initializeAuth = () => {
-  const authData = MMKVStorage.getAuthData();
-  if (authData && authData.user && authData.token) {
-    useAuthStore.getState().login(authData.user, authData.token);
+  console.log('🔍 Initializing auth from MMKV...');
+  
+  try {
+    // Method 1: Try to get auth data from MMKV
+    const authData = MMKVStorage.getAuthData();
+    console.log('📦 Auth data from MMKV:', {
+      hasAuthData: !!authData,
+      hasUser: !!authData?.user,
+      hasToken: !!authData?.token,
+      userId: authData?.user?._id,
+      userName: authData?.user?.userName,
+    });
+    
+    // Method 2: Try to get individual user and token
+    const user = MMKVStorage.getUser();
+    const token = MMKVStorage.getToken();
+    console.log('🔍 Individual data from MMKV:', {
+      hasUser: !!user,
+      hasToken: !!token,
+      userId: user?._id,
+      userName: user?.userName,
+    });
+    
+    // Use authData if available, otherwise use individual data
+    const finalUser = authData?.user || user;
+    const finalToken = authData?.token || token;
+    
+    if (finalUser && finalToken) {
+      console.log('✅ Restoring auth state from MMKV...');
+      console.log('👤 User:', {
+        id: finalUser._id,
+        name: finalUser.userName,
+        email: finalUser.userEmail,
+      });
+      console.log('🔑 Token length:', finalToken.length);
+      
+      // Restore auth state
+      useAuthStore.getState().login(finalUser, finalToken);
+      
+      // Verify the state was restored
+      const currentState = useAuthStore.getState();
+      console.log('✅ Auth state restored successfully:', {
+        isAuthenticated: currentState.isAuthenticated,
+        hasUser: !!currentState.user,
+        hasToken: !!currentState.token,
+        userId: currentState.user?._id,
+      });
+    } else {
+      console.log('❌ No valid auth data found in MMKV');
+      console.log('📊 Available data:', {
+        authData: !!authData,
+        user: !!user,
+        token: !!token,
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error initializing auth:', error);
   }
 }; 

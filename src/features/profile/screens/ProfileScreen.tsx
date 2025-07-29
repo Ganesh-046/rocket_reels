@@ -82,6 +82,31 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false);
   const [isCopySuccess, setIsCopySuccess] = useState(false);
 
+  // Reset local state when user changes (logout)
+  useEffect(() => {
+    if (!user) {
+      // User logged out - reset all local state
+      setUserProfile(null);
+      setBalanceData(null);
+      setLoading(false);
+      setRefreshing(false);
+      setIsInvitationModalVisible(false);
+      setIsCopySuccess(false);
+      console.log('🔄 ProfileScreen - User logged out, state reset');
+    }
+  }, [user]);
+
+  // Handle focus effect to refresh data when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user?._id) {
+        console.log('📱 ProfileScreen - Screen focused, refreshing data');
+        getUserProfile(user._id, true);
+        getUserBalance(user._id, true);
+      }
+    }, [user?._id])
+  );
+
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     const shouldHide = offsetY > 1;
@@ -137,11 +162,11 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
 
   const clearCachedData = () => {
     try {
-      MMKVStorage.remove('userProfile');
-      MMKVStorage.remove('userBalance');
-      console.log('🗑️ Cached profile data cleared');
+      // Clear all MMKV data
+      MMKVStorage.clearAll();
+      console.log('🗑️ All MMKV data cleared successfully');
     } catch (error) {
-      console.error('❌ Failed to clear cached data:', error);
+      console.error('❌ Failed to clear MMKV data:', error);
     }
   };
 
@@ -391,9 +416,24 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
-            clearCachedData(); // Clear cached profile data
-            logout();
-            navigation.replace('Auth');
+            console.log('🚪 ProfileScreen - User initiated logout');
+            
+            try {
+              // Clear all cached data first
+              clearCachedData();
+              
+              // Clear auth store
+              logout();
+              
+              // Navigate to auth screen
+              navigation.replace('Auth');
+              
+              console.log('✅ ProfileScreen - Logout completed successfully');
+            } catch (error) {
+              console.error('❌ ProfileScreen - Logout error:', error);
+              // Still navigate to auth even if there's an error
+              navigation.replace('Auth');
+            }
           },
         },
       ]
@@ -506,23 +546,67 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     );
   };
 
-  // Get user data from API or fallback to store
+  // Get user data for display
   const userName = userProfile?.userName || user?.userName || 'Guest';
   const userEmail = userProfile?.userEmail || user?.userEmail || 'No email';
   const referralCode = userProfile?.referralCode || 'N/A';
+  const isUserLoggedIn = !!(user?._id || userProfile?._id);
   const firstLetter = userName?.charAt(0)?.toUpperCase() || 'G';
-  
-  // Check if user is logged in
-  const isUserLoggedIn = !!user;
-  
-  // Debug logging for user data
-  console.log('👤 Profile Screen - User Data:', {
-    userFromStore: user,
-    userFromAPI: userProfile,
+
+  // Debug logging
+  console.log('👤 ProfileScreen - User Data:', {
+    hasUser: !!user,
+    hasUserProfile: !!userProfile,
     finalUserName: userName,
     finalUserEmail: userEmail,
-    timestamp: new Date().toISOString(),
+    isUserLoggedIn,
   });
+
+  // If no user is logged in, show login prompt
+  if (!isUserLoggedIn) {
+    return (
+      <LinearGradient
+        colors={['#ed9b72', '#7d2537']}
+        style={styles.container}
+      >
+        <View style={[styles.mainContainer, { marginBottom: isHide ? marginBottom : 0 }]}>
+          <ScrollView
+            onScroll={onScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Profile Header */}
+            <View style={[styles.profileHeader, { marginTop: insets.top }]}>
+              <View style={styles.profileInfo}>
+                <View style={styles.profileImage}>
+                  <Text style={styles.profileInitial}>G</Text>
+                </View>
+                <View style={styles.profileDetails}>
+                  <Text style={styles.userName}>Guest</Text>
+                  <Text style={styles.userEmail}>Please login to continue</Text>
+                </View>
+              </View>
+              <PressableButton style={styles.btnContainer} onPress={() => navigation.navigate('Auth')}>
+                <LinearGradient 
+                  colors={['#E9743A', '#CB2D4D']}
+                  style={{ 
+                    padding: isLargeDevice ? width * .01 : width * .02, 
+                    paddingHorizontal: isLargeDevice ? width * .025 : width * .05, 
+                    justifyContent: 'center', 
+                    borderRadius: isLargeDevice ? width * .015 : width * .03, 
+                    alignItems: 'center' 
+                  }}
+                >
+                  <Text style={styles.heading}>
+                    Login
+                  </Text>
+                </LinearGradient>
+              </PressableButton>
+            </View>
+          </ScrollView>
+        </View>
+      </LinearGradient>
+    );
+  }
   
   // Handle balance data structure - check for coinsQuantity structure
   const balance = balanceData?.coinsQuantity?.totalCoins || 

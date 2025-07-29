@@ -11,7 +11,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import RootNavigator from './src/navigation/RootNavigator';
 import ThemesContext from './src/context/ThemeContext';
 import QueryClientProvider from './src/app/QueryClientProvider';
-
+import { initializeAuth } from './src/store/auth.store';
 
 import { setReactNativeReady } from './src/lib/mmkv';
 
@@ -31,6 +31,15 @@ function App(): React.JSX.Element {
       setIsRNReady(true);
       setReactNativeReady(true);
       console.log('[APP DEBUG] React Native is ready, MMKV can be initialized');
+      
+      // Initialize auth from MMKV storage
+      try {
+        console.log('[APP DEBUG] Initializing auth from MMKV...');
+        initializeAuth();
+        console.log('[APP DEBUG] Auth initialization completed');
+      } catch (error) {
+        console.error('[APP DEBUG] Auth initialization failed:', error);
+      }
     }, 500); // Increased delay to ensure React Native is fully ready
     
     return () => clearTimeout(timer);
