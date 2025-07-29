@@ -300,11 +300,10 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
   // Check if already watched today
   useEffect(() => {
     const checkAlreadyWatch = async () => {
-      const alreadyWatch = MMKVStorage.get<string>('alreadyWatch');
+      const alreadyWatch = MMKVStorage.get('alreadyWatch');
       const today = moment().format('DD-MMM-YYYY');
       setIsAlreadyWatch(alreadyWatch || '');
     };
-    
     if (isFocused) {
       checkAlreadyWatch();
     }

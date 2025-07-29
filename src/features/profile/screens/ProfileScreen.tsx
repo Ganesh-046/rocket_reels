@@ -562,52 +562,6 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
     isUserLoggedIn,
   });
 
-  // If no user is logged in, show login prompt
-  if (!isUserLoggedIn) {
-    return (
-      <LinearGradient
-        colors={['#ed9b72', '#7d2537']}
-        style={styles.container}
-      >
-        <View style={[styles.mainContainer, { marginBottom: isHide ? marginBottom : 0 }]}>
-          <ScrollView
-            onScroll={onScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Profile Header */}
-            <View style={[styles.profileHeader, { marginTop: insets.top }]}>
-              <View style={styles.profileInfo}>
-                <View style={styles.profileImage}>
-                  <Text style={styles.profileInitial}>G</Text>
-                </View>
-                <View style={styles.profileDetails}>
-                  <Text style={styles.userName}>Guest</Text>
-                  <Text style={styles.userEmail}>Please login to continue</Text>
-                </View>
-              </View>
-              <PressableButton style={styles.btnContainer} onPress={() => navigation.navigate('Auth')}>
-                <LinearGradient 
-                  colors={['#E9743A', '#CB2D4D']}
-                  style={{ 
-                    padding: isLargeDevice ? width * .01 : width * .02, 
-                    paddingHorizontal: isLargeDevice ? width * .025 : width * .05, 
-                    justifyContent: 'center', 
-                    borderRadius: isLargeDevice ? width * .015 : width * .03, 
-                    alignItems: 'center' 
-                  }}
-                >
-                  <Text style={styles.heading}>
-                    Login
-                  </Text>
-                </LinearGradient>
-              </PressableButton>
-            </View>
-          </ScrollView>
-        </View>
-      </LinearGradient>
-    );
-  }
-  
   // Handle balance data structure - check for coinsQuantity structure
   const balance = balanceData?.coinsQuantity?.totalCoins || 
                  balanceData?.balance || 
@@ -648,95 +602,132 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
           id: 85745,
           name: 'Tailored Content for Every Age',
           desc: 'Discover content that fits your age and mood.',
-          iconName: 'bookmark'
-        },
+          iconName: 'target'
+        }
       ]
     },
     {
-      id: 53532,
-      title: 'MY UPDATES',
+      id: 53533,
+      title: 'ACCOUNT',
       data: [
         {
-          id: 85685,
+          id: 35326,
+          name: 'Edit Profile',
+          desc: 'Update your profile information',
+          iconName: 'edit'
+        },
+        {
+          id: 35327,
           name: 'My List',
-          desc: 'See added MyList here',
+          desc: 'Your saved content',
           iconName: 'bookmark'
         },
         {
-          id: 85685,
+          id: 35328,
           name: 'My History',
-          desc: 'Know your viewing activity',
+          desc: 'Your viewing history',
           iconName: 'history'
         },
         {
-          id: 85685,
+          id: 35329,
           name: 'Transaction History',
-          desc: 'Know your payment transactions',
+          desc: 'Your payment history',
           iconName: 'transaction'
         },
+        {
+          id: 35330,
+          name: 'My Wallet',
+          desc: 'Manage your wallet',
+          iconName: 'wallet'
+        },
+        {
+          id: 35331,
+          name: 'Refill',
+          desc: 'Add coins to your wallet',
+          iconName: 'refill'
+        },
+        {
+          id: 35332,
+          name: 'Subscription',
+          desc: 'Manage your subscription',
+          iconName: 'subscription'
+        }
       ]
     },
     {
-      id: 854643,
-      title: 'SETTINGS',
+      id: 53534,
+      title: 'SUPPORT',
       data: [
         {
-          id: 745634,
-          name: 'Delete Account',
-          desc: 'Delete your account here',
-          iconName: 'account_delete'
-        },
-        {
-          id: 855754,
-          name: 'Watch Family Safe Content',
-          desc: 'Want to enable family safe content',
-          iconName: '18+'
-        },
-      ]
-    },
-    {
-      id: 7456345,
-      title: 'POLICY & SUPPORT',
-      data: [
-        {
-          id: 865756,
+          id: 35333,
           name: 'Privacy Policy',
-          desc: 'Our terms of use & agreements',
+          desc: 'Read our privacy policy',
           iconName: 'privacy'
         },
         {
-          id: 865756,
+          id: 35334,
           name: 'Refund Policy',
-          desc: 'Our refund and cancellation policy',
+          desc: 'Learn about our refund policy',
           iconName: 'refund'
         },
         {
-          id: 865756,
+          id: 35335,
           name: 'Terms & Conditions',
-          desc: 'Our terms and conditions',
-          iconName: 'service'
+          desc: 'Read our terms and conditions',
+          iconName: 'terms'
         },
         {
-          id: 865756,
+          id: 35336,
           name: 'Contact Us',
-          desc: 'Contact us for support and assistance',
+          desc: 'Get in touch with us',
           iconName: 'contact'
         }
       ]
     },
     {
-      id: 7456345,
-      title: 'OTHERS',
+      id: 53535,
+      title: 'ACCOUNT ACTIONS',
       data: [
         {
-          id: 865756,
+          id: 35337,
+          name: 'Delete Account',
+          desc: 'Permanently delete your account',
+          iconName: 'delete'
+        },
+        {
+          id: 35338,
           name: 'Log out',
-          desc: 'Sign off from the system',
+          desc: 'Sign out of your account',
           iconName: 'logout'
         }
       ]
-    },
+    }
   ];
+
+  // Filter menu items based on login status
+  const filteredMenuData = menuData.map(section => ({
+    ...section,
+    data: section.data.filter(item => {
+      // Show all items to logged-in users
+      if (isUserLoggedIn) {
+        return true;
+      }
+      
+      // For guest users, only show certain items
+      const guestAllowedItems = [
+        'Invitation',
+        'Rocket Reels', 
+        'Explore',
+        'Tailored Content for Every Age',
+        'Privacy Policy',
+        'Refund Policy',
+        'Terms & Conditions',
+        'Contact Us'
+      ];
+      
+      return guestAllowedItems.includes(item.name);
+    })
+  })).filter(section => section.data.length > 0); // Remove empty sections
 
   return (
     <LinearGradient
@@ -886,7 +877,7 @@ const ProfileScreen: React.FC<NavigationProps> = ({ navigation }) => {
             </TouchableOpacity>
 
             {/* Menu Sections */}
-            {menuData.map((section, sectionIndex) => (
+            {filteredMenuData.map((section, sectionIndex) => (
               <View key={sectionIndex} style={styles.menuSection}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
                 {section.data.map((item, itemIndex) => (
