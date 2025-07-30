@@ -470,15 +470,6 @@ const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScroll
         {...(Platform.OS === 'ios' ? {
           allowsExternalPlayback: false,
           automaticallyWaitsToMinimizeStalling: false,
-          // iOS-specific video optimizations
-          playInBackground: false,
-          playWhenInactive: false,
-          ignoreSilentSwitch: "ignore",
-          // iOS audio session
-          audioOnly: false,
-          // iOS video rendering
-          useTextureView: false,
-          bufferType: 'surface',
         } : {
           useTextureView: true,
           bufferType: 'surface',

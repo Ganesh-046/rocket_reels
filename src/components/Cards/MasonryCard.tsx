@@ -131,34 +131,42 @@ const MasonryCard: React.FC<MasonryCardProps> = ({
       disabled={disabled}
     >
       {imageLoading && (
-        <View style={[styles.image, { justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={[styles.image, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.backgroundSecondary }]}>
           <ActivityLoader />
         </View>
       )}
-      {!imageLoading && !imageError && (
+      {!imageLoading && !imageError && item?.backdropImage && (
         <FastImage
-          source={item?.backdropImage ? 
-            { 
-              uri: `${NEXT_PUBLIC_ASSET_URL}/${item.backdropImage}`, 
-              priority: 'high', 
-              cache: 'immutable' 
-            } : 
-            { uri: 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=No+Image' }
-          }
+          source={{ 
+            uri: `${NEXT_PUBLIC_ASSET_URL}/${item.backdropImage}`, 
+            priority: 'high', 
+            cache: 'immutable' 
+          }}
           style={[styles.image, { height: item.height }]}
           resizeMode={FastImage.resizeMode.cover}
-          onLoadStart={() => setImageLoading(true)}
-          onLoadEnd={() => setImageLoading(false)}
-          onError={() => {
+          onLoadStart={() => {
+            console.log('🖼️ MasonryCard loading image:', `${NEXT_PUBLIC_ASSET_URL}/${item.backdropImage}`);
+            setImageLoading(true);
+          }}
+          onLoadEnd={() => {
+            console.log('🖼️ MasonryCard image loaded successfully');
+            setImageLoading(false);
+          }}
+          onError={(error) => {
+            console.error('🖼️ MasonryCard image error:', {
+              imageUrl: `${NEXT_PUBLIC_ASSET_URL}/${item.backdropImage}`,
+              error: error
+            });
             setImageLoading(false);
             setImageError(true);
-            console.error('🖼️ MasonryCard image error:', item.backdropImage);
           }}
         />
       )}
-      {imageError && (
+      {(!item?.backdropImage || imageError) && !imageLoading && (
         <View style={[styles.image, { backgroundColor: theme.colors.backgroundSecondary, justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>No Image</Text>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+            {!item?.backdropImage ? 'No Image' : 'Failed to Load'}
+          </Text>
         </View>
       )}
       

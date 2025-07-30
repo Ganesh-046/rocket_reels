@@ -59,24 +59,34 @@ const BannerCard = ({ item, index, navigation, currentBannerIndex }: BannerCardP
 
 
  const handlePlayPress = useCallback(() => {
-   // Extract data for episodes navigation
-   const contentId = item.contentId || item._id || item.id;
-   const contentTitle = item?.contentDetails?.title || item.title || item.name;
-   const contentDescription = item?.contentDetails?.description || item.description;
-  
-   // Navigate to EpisodePlayerScreen with content data
-   navigation.navigate('EpisodePlayer', {
-     contentId: contentId,
-     contentName: contentTitle,
-     episodes: [], // Will be loaded by EpisodePlayerScreen
-     initialIndex: 0,
-     trailerData: {
-       id: item._id || item.id,
-       title: contentTitle,
-       description: contentDescription,
-       contentId: contentId
-     }
-   });
+   if (item._id || item.id) {
+     // Extract data for promo navigation
+     const contentId = item.contentId || item._id || item.id;
+     const contentTitle = item?.contentDetails?.title || item.title || item.name;
+     const contentDescription = item?.contentDetails?.description || item.description;
+    
+     console.log('BannerCard clicked:', {
+       contentId,
+       contentTitle,
+       contentDescription
+     });
+    
+     // Navigate to PromoDetailScreen first, then to EpisodePlayerScreen
+     navigation.navigate('PromoDetail', {
+       item: {
+         ...item,
+         _id: contentId,
+         title: contentTitle,
+         description: contentDescription,
+         trailerData: {
+           id: item._id || item.id,
+           title: contentTitle,
+           description: contentDescription,
+           contentId: contentId
+         }
+       }
+     });
+   }
  }, [navigation, item]);
 
 

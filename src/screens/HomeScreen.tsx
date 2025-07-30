@@ -31,7 +31,6 @@ import { useAuthState } from '../store/auth.store';
 import { PressableButton } from '../components/Button';
 import { SvgIcons } from '../components/common/SvgIcons';
 import EmptyMessage from '../components/common/EmptyMessage';
-import MasonryCard from '../components/Cards/MasonryCard';
 import MovieCard from '../components/Cards/MovieCard';
 import RecentCard from '../components/Cards/RecentCard';
 import MMKVStorage from '../lib/mmkv';
@@ -59,7 +58,7 @@ const API_PRIORITY = {
 };
 
 // Optimized render functions with React.memo
-const renderMovieCard = React.memo(({ item, index, navigation }: { item: ContentItem; index: number; navigation: any }) => {
+const renderMovieCard = React.memo(({ item, index, navigation }: { item: any; index: number; navigation: any }) => {
   if (!item) return null;
   return (
     <MovieCard
@@ -71,7 +70,7 @@ const renderMovieCard = React.memo(({ item, index, navigation }: { item: Content
   );
 });
 
-const renderTopMovieCard = React.memo(({ item, index, navigation, style }: { item: ContentItem; index: number; navigation: any; style: any }) => {
+const renderTopMovieCard = React.memo(({ item, index, navigation, style }: { item: any; index: number; navigation: any; style: any }) => {
   if (!item) return null;
   return (
     <View key={`top-container-${item._id}-${index}`} style={style.topMovieContainer}>
@@ -182,6 +181,7 @@ const styles = (theme: any, isLargeDevice: boolean, width: number, height: numbe
   masonryColumn: {
     flex: 1,
     marginHorizontal: 5,
+    alignItems: 'center', // Center MovieCard components
   },
   errorContainer: {
     padding: 16,
@@ -389,12 +389,11 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     const params: any = {
       page: 1,
       limit: 100,
-      adult: true,
     };
 
-    // Only add type parameter for specific genres, not for 'all'
+    // Only add genre parameter for specific genres, not for 'all'
     if (isSelected !== 'all' && isSelected !== 'upcoming') {
-      params.type = isSelected.toLowerCase();
+      params.genre = isSelected.toLowerCase();
     }
 
     return params;
@@ -420,7 +419,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     limit: 100,
   }), []);
 
-  // API Queries
+  // API Queries - Simplified to use single content list for all genres
   const {
     data: contentListData,
     isLoading: contentListLoading,
@@ -439,9 +438,29 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   const continueWatchingData = useMemo(() => {
     if (!user || !contentListData?.data?.result) return [];
 
+    // Process content data to ensure proper image URLs
+    const processContentItem = (item: any) => {
+      let processedItem = { ...item };
+      
+      // Handle different image field names and ensure proper URL construction
+      if (item.backdropImage) {
+        processedItem.backdropImage = item.backdropImage;
+      } else if (item.image) {
+        processedItem.backdropImage = item.image;
+      } else if (item.contentDetails?.backdropImage) {
+        processedItem.backdropImage = item.contentDetails.backdropImage;
+      } else if (item.contentDetails?.thumb) {
+        processedItem.backdropImage = item.contentDetails.thumb;
+      } else if (item.contentDetails?.posterImage) {
+        processedItem.backdropImage = item.contentDetails.posterImage;
+      }
+
+      return processedItem;
+    };
+
     // Take first 5 items from content list and add progress data
     return contentListData.data.result.slice(0, 5).map((item, index) => ({
-      ...item,
+      ...processContentItem(item),
       progress: Math.floor(Math.random() * 80) + 10, // Simulate progress between 10-90%
       episode: `Episode ${index + 1}`,
       watchProgress: Math.floor(Math.random() * 80) + 10,
@@ -487,6 +506,71 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     isLoading: languagesLoading,
     error: languagesError,
   } = useLanguages();
+
+  // Debug content data after API queries are declared
+  useEffect(() => {
+    console.log('📺 Content Data Debug:', {
+      hasContentListData: !!contentListData?.data?.result,
+      contentListLength: contentListData?.data?.result?.length || 0,
+      hasBannerData: !!bannerData?.data,
+      bannerDataLength: bannerData?.data?.length || 0,
+      hasTopContentData: !!topContentData?.data?.top,
+      topContentLength: topContentData?.data?.top?.length || 0,
+      selectedGenre: isSelected,
+    });
+
+    // Debug image URLs
+    if (contentListData?.data?.result && contentListData.data.result.length > 0) {
+      const sampleItem = contentListData.data.result[0];
+      console.log('🖼️ Sample Content Item Image Debug:', {
+        itemId: sampleItem._id,
+        title: sampleItem.title,
+        backdropImage: sampleItem.backdropImage,
+        image: sampleItem.image,
+        contentDetailsBackdrop: sampleItem.contentDetails?.backdropImage,
+        contentDetailsThumb: sampleItem.contentDetails?.thumb,
+        contentDetailsPoster: sampleItem.contentDetails?.posterImage,
+        processedBackdropImage: sampleItem.backdropImage ? `${NEXT_PUBLIC_ASSET_URL}/${sampleItem.backdropImage}` : 'No backdrop image',
+      });
+    }
+
+    // Add global function to test image URLs
+    (global as any).testImageUrls = () => {
+      console.log('🧪 Testing image URLs...');
+      
+      if (contentListData?.data?.result && contentListData.data.result.length > 0) {
+        const sampleItem = contentListData.data.result[0];
+        const imageUrl = `${NEXT_PUBLIC_ASSET_URL}/${sampleItem.backdropImage || sampleItem.image}`;
+        
+        console.log('🧪 Sample image URL test:', {
+          originalBackdrop: sampleItem.backdropImage,
+          originalImage: sampleItem.image,
+          constructedUrl: imageUrl,
+          cdnBase: NEXT_PUBLIC_ASSET_URL,
+        });
+        
+        // Test if the URL is valid
+        fetch(imageUrl)
+          .then(response => {
+            console.log('🧪 Image URL test result:', {
+              url: imageUrl,
+              status: response.status,
+              ok: response.ok,
+              contentType: response.headers.get('content-type'),
+            });
+          })
+          .catch(error => {
+            console.error('🧪 Image URL test failed:', {
+              url: imageUrl,
+              error: error.message,
+            });
+          });
+      } else {
+        console.log('🧪 No content data available for testing');
+      }
+    };
+
+  }, [contentListData?.data?.result, bannerData?.data, topContentData?.data?.top, isSelected]);
 
   // Optimized loading states
   const { isLoading, isInitialLoading } = useOptimizedLoading({
@@ -620,7 +704,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
       const processedBanners = bannerData.data.map((item: any, index: number) => {
         let imageUri = '';
 
-        // Try different possible image field names
+        // Try different possible image field names and ensure proper URL construction
         if (item?.image && item?.image !== '') {
           imageUri = `${NEXT_PUBLIC_ASSET_URL}/${item?.image}`;
         } else if (item?.imageUri && item?.imageUri !== '') {
@@ -631,6 +715,8 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
           imageUri = `${NEXT_PUBLIC_ASSET_URL}/${item.contentDetails?.backdropImage}`;
         } else if (item?.contentDetails?.thumb) {
           imageUri = `${NEXT_PUBLIC_ASSET_URL}/${item.contentDetails?.thumb}`;
+        } else if (item?.backdropImage) {
+          imageUri = `${NEXT_PUBLIC_ASSET_URL}/${item.backdropImage}`;
         }
 
         // Validate image URL
@@ -886,19 +972,39 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
   const filteredContentData = useMemo(() => {
     if (!contentListData?.data?.result) return {};
 
+    // Process content data to ensure proper image URLs
+    const processContentItem = (item: any) => {
+      let processedItem = { ...item };
+      
+      // Handle different image field names and ensure proper URL construction
+      if (item.backdropImage) {
+        processedItem.backdropImage = item.backdropImage;
+      } else if (item.image) {
+        processedItem.backdropImage = item.image;
+      } else if (item.contentDetails?.backdropImage) {
+        processedItem.backdropImage = item.contentDetails.backdropImage;
+      } else if (item.contentDetails?.thumb) {
+        processedItem.backdropImage = item.contentDetails.thumb;
+      } else if (item.contentDetails?.posterImage) {
+        processedItem.backdropImage = item.contentDetails.posterImage;
+      }
+
+      return processedItem;
+    };
+
     return {
       topContentData: topContentData?.data?.top?.filter((item: any) =>
         !item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
-      ) || [],
+      ).map(processContentItem) || [],
       latestContentData: latestContentData?.data?.contentList?.filter((item: any) =>
         !item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
-      ) || [],
+      ).map(processContentItem) || [],
       allContentData: contentListData.data.result.filter((item: any) =>
         !item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
-      ) || [],
+      ).map(processContentItem) || [],
       upcomingContentData: upcomingContentData?.data?.filteredContentList?.filter((item: any) =>
         !item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
-      ) || [],
+      ).map(processContentItem) || [],
       bannerData: bannerData?.data || []
     };
   }, [contentListData?.data?.result, topContentData?.data?.top, latestContentData?.data?.contentList, upcomingContentData?.data?.filteredContentList, bannerData?.data]);
@@ -937,7 +1043,7 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
           item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
         ) || [];
       } else {
-        // For specific genres, filter by genre slug
+        // For specific genres, filter by genre slug from the main content list
         mixContents = contentListData.data.result.filter((item: any) =>
           item.genres?.some((genre: any) => genre.slug === isSelected) &&
           !item.genres?.some((genre: any) => genre.slug === '1752133784893-exclusive' || genre.slug === 'exclusive')
@@ -947,12 +1053,61 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
       if (!mixContents.length) return { leftColumn: [], rightColumn: [] };
 
       const allContent = languagesData?.data ? [{ languageData: languagesData.data }, ...mixContents] : mixContents;
-      const processedData = allContent.map((item: any, index: number) => ({
-        ...item,
-        height: width * 0.6,
-        id: item.id || item._id || `item-${index}`,
-        stableIndex: index
-      }));
+      const processedData = allContent.map((item: any, index: number) => {
+        // Process image URLs to ensure they use the correct CDN URL
+        let processedItem = { ...item };
+        
+        // Handle different image field names and ensure proper URL construction
+        // Set backdropImage to the best available image field for MovieCard
+        if (item.backdropImage) {
+          processedItem.backdropImage = item.backdropImage;
+        } else if (item.image) {
+          processedItem.backdropImage = item.image;
+        } else if (item.contentDetails?.backdropImage) {
+          processedItem.backdropImage = item.contentDetails.backdropImage;
+        } else if (item.contentDetails?.thumb) {
+          processedItem.backdropImage = item.contentDetails.thumb;
+        } else if (item.contentDetails?.posterImage) {
+          processedItem.backdropImage = item.contentDetails.posterImage;
+        } else {
+          // If no image found, set a placeholder
+          processedItem.backdropImage = '';
+        }
+
+        // Also ensure the 'image' field is set for MovieCard compatibility
+        if (item.image) {
+          processedItem.image = item.image;
+        } else if (item.backdropImage) {
+          processedItem.image = item.backdropImage;
+        } else if (item.contentDetails?.backdropImage) {
+          processedItem.image = item.contentDetails.backdropImage;
+        } else if (item.contentDetails?.thumb) {
+          processedItem.image = item.contentDetails.thumb;
+        } else if (item.contentDetails?.posterImage) {
+          processedItem.image = item.contentDetails.posterImage;
+        } else {
+          processedItem.image = '';
+        }
+
+        // Debug log for image processing
+        console.log('🖼️ Processing item image for MovieCard:', {
+          itemId: item._id,
+          title: item.title,
+          originalBackdrop: item.backdropImage,
+          originalImage: item.image,
+          contentDetailsBackdrop: item.contentDetails?.backdropImage,
+          contentDetailsThumb: item.contentDetails?.thumb,
+          processedBackdrop: processedItem.backdropImage,
+          processedImage: processedItem.image,
+        });
+
+        return {
+          ...processedItem,
+          height: width * 0.6,
+          id: item.id || item._id || `item-${index}`,
+          stableIndex: index
+        };
+      });
 
       return {
         leftColumn: processedData.filter((_: any, index: number) => index % 2 === 0),
@@ -965,41 +1120,49 @@ const HomeScreen = React.memo(({ navigation }: { navigation: any }) => {
     }
   }, [contentListData?.data?.result, topContentData?.data?.top, latestContentData?.data?.contentList, upcomingContentData?.data?.filteredContentList, isSelected, handleError, width, languagesData?.data]);
 
-  // Optimized masonry layout component with stable keys
+  // Optimized masonry layout component with stable keys - Using MovieCard instead of MasonryCard
   const MasonryLayout = useMemo(() => {
     if (!masonryData.leftColumn.length && !masonryData.rightColumn.length) return null;
 
     return (
       <View style={style.masonryContainer}>
         <View style={style.masonryColumn}>
-          {masonryData.leftColumn.map((item: any, index: number) => (
-            <MasonryCard
-              key={`left-${item.id}-${item.stableIndex}`}
-              item={item}
-              style={{ marginBottom: 10 }}
-              userProfileInfo={user}
-              navigation={navigation}
-              setIsLoginPopUp={() => { }}
-              disabled={isSelected === 'upcoming'}
-            />
-          ))}
+          {masonryData.leftColumn.map((item: any, index: number) => {
+            // Skip language data items
+            if (item?.languageData) return null;
+            
+            return (
+              <MovieCard
+                key={`left-${item.id}-${item.stableIndex}`}
+                item={item}
+                index={index}
+                navigation={navigation}
+                propCard={{ marginBottom: 10 }}
+                disabled={isSelected === 'upcoming'}
+              />
+            );
+          })}
         </View>
         <View style={style.masonryColumn}>
-          {masonryData.rightColumn.map((item: any, index: number) => (
-            <MasonryCard
-              key={`right-${item.id}-${item.stableIndex}`}
-              item={item}
-              style={{ marginBottom: 10 }}
-              userProfileInfo={user}
-              navigation={navigation}
-              setIsLoginPopUp={() => { }}
-              disabled={isSelected === 'upcoming'}
-            />
-          ))}
+          {masonryData.rightColumn.map((item: any, index: number) => {
+            // Skip language data items
+            if (item?.languageData) return null;
+            
+            return (
+              <MovieCard
+                key={`right-${item.id}-${item.stableIndex}`}
+                item={item}
+                index={index}
+                navigation={navigation}
+                propCard={{ marginBottom: 10 }}
+                disabled={isSelected === 'upcoming'}
+              />
+            );
+          })}
         </View>
       </View>
     );
-  }, [masonryData, user, navigation, isSelected, style]);
+  }, [masonryData, navigation, isSelected, style]);
 
   // Dynamic gradient colors for background
   const gradientColorsArray = useMemo(() => {

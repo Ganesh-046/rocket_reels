@@ -84,6 +84,18 @@ const MovieCard: React.FC<MovieCardProps> = ({
              : { uri: 'https://via.placeholder.com/300x450/333333/FFFFFF?text=No+Image' }
          }
          resizeMode={FastImage.resizeMode.contain}
+         onLoadStart={() => {
+           console.log('🖼️ MovieCard loading image:', `${NEXT_PUBLIC_ASSET_URL}/${item?.backdropImage || item?.image}`);
+         }}
+         onLoadEnd={() => {
+           console.log('🖼️ MovieCard image loaded successfully');
+         }}
+         onError={() => {
+           console.error('🖼️ MovieCard image error:', {
+             imageUrl: `${NEXT_PUBLIC_ASSET_URL}/${item?.backdropImage || item?.image}`,
+             error: 'Image failed to load'
+           });
+         }}
        />
        {premium && (
          <View style={style.exclusiveBadge}>

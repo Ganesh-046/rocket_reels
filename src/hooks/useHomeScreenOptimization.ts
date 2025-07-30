@@ -1,4 +1,4 @@
-import { useCallback, useRef, useMemo } from 'react';
+import { useCallback, useRef, useMemo, useEffect } from 'react';
 import { Image } from 'react-native';
 import { processContentListImages } from '../utils/imageUtils';
 
@@ -26,7 +26,9 @@ class OptimizedCache {
     // Evict oldest entries if cache is full
     if (this.cache.size >= this.maxSize) {
       const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
     }
 
     this.cache.set(key, {
@@ -91,23 +93,20 @@ export const useImagePreloader = () => {
     if (!isPreloading.current) {
       isPreloading.current = true;
       
-      // Use InteractionManager to preload during idle time
-      // InteractionManager.runAfterInteractions(() => { // This line was removed as per the new_code, as InteractionManager is no longer imported.
-      //   const img = new Image();
-      //   img.src = url;
-      //   img.onload = () => {
-      //     preloadQueue.current.delete(url);
-      //     if (preloadQueue.current.size === 0) {
-      //       isPreloading.current = false;
-      //     }
-      //   };
-      //   img.onerror = () => {
-      //     preloadQueue.current.delete(url);
-      //     if (preloadQueue.current.size === 0) {
-      //       isPreloading.current = false;
-      //     }
-      //   };
-      // });
+      // Use React Native's Image.prefetch for preloading
+      Image.prefetch(url)
+        .then(() => {
+          preloadQueue.current.delete(url);
+          if (preloadQueue.current.size === 0) {
+            isPreloading.current = false;
+          }
+        })
+        .catch(() => {
+          preloadQueue.current.delete(url);
+          if (preloadQueue.current.size === 0) {
+            isPreloading.current = false;
+          }
+        });
     }
   }, []);
 
@@ -293,12 +292,12 @@ export const useHomeScreenOptimization = () => {
   const { handleError, clearErrors } = useOptimizedErrorHandling();
 
   // Cleanup on unmount
-  // useEffect(() => { // This line was removed as per the new_code, as useEffect is no longer imported.
-  //   return () => {
-  //     clearCache();
-  //     clearErrors();
-  //   };
-  // }, [clearCache, clearErrors]);
+  useEffect(() => {
+    return () => {
+      clearCache();
+      clearErrors();
+    };
+  }, [clearCache, clearErrors]);
 
   return {
     preloadImage,

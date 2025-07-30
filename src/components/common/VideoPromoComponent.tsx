@@ -231,21 +231,80 @@ const VideoPromoComponent: React.FC<VideoPromoComponentProps> = ({
         )}
         
         <View style={style.fallbackOverlay}>
-          <Text style={style.fallbackTitle}>
+          {/* <Text style={style.fallbackTitle}>
             {item?.title || item?.name || 'Content Title'}
           </Text>
           <Text style={style.fallbackDescription}>
             {item?.description || 'No description available'}
-          </Text>
-          <PressableButton
-            onPress={onPressEpisode}
-            disabled={!comingDate}
-            style={style.watchButton}
-          >
-            <Text style={style.watchButtonText}>
-              {!comingDate ? 'Coming Soon' : 'Watch Now'}
-            </Text>
-          </PressableButton>
+          </Text> */}
+          
+          {/* Fancy Watch Now Button */}
+          <View style={style.bottomButtonContainer}>
+            {/* Glow effect */}
+            <Animated.View 
+              style={[
+                style.glowEffect,
+                {
+                  opacity: glowAnim,
+                  transform: [{ scale: glowAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.2]
+                  })}]
+                }
+              ]}
+            />
+            
+            {/* Main button with animations */}
+            <Animated.View
+              style={[
+                style.fancyButtonContainer,
+                {
+                  transform: [
+                    { scale: Animated.multiply(scaleAnim, pulseAnim) }
+                  ]
+                }
+              ]}
+            >
+              <LinearGradient
+                colors={!comingDate 
+                  ? ['#666666', '#888888'] 
+                  : ['#ED9B72', '#7D2537']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={style.gradientContainer}
+              >
+                <TouchableOpacity
+                  onPress={onPressEpisode}
+                  disabled={!comingDate}
+                  style={style.fancyButton}
+                  activeOpacity={0.9}
+                >
+                  <View style={style.buttonContent}>
+                    <SvgIcons 
+                      name="play" 
+                      color={colors.PRIMARYWHITE} 
+                      size={isLargeDevice ? width * .025 : width * .04} 
+                      viewBox="0 0 64 64"
+                      strokeWidth={1.5}
+                    />
+                    <Text style={style.fancyButtonText}>
+                      {!comingDate ? 'Coming Soon' : 'Watch Now'}
+                    </Text>
+                    {comingDate && (
+                      <SvgIcons 
+                        name="arrow-forward" 
+                        color={colors.PRIMARYWHITE} 
+                        size={isLargeDevice ? width * .02 : width * .035} 
+                        viewBox="0 0 64 64"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </LinearGradient>
+            </Animated.View>
+          </View>
         </View>
       </View>
     );
@@ -306,19 +365,73 @@ const VideoPromoComponent: React.FC<VideoPromoComponentProps> = ({
               </TouchableOpacity>
             </View>
 
-            <PressableButton
-              onPress={onPressEpisode}
-              disabled={!comingDate}
-              style={[style.watchButton, { 
-                width: isLargeDevice ? width * .4 : '100%',
-                backgroundColor: colors.PRIMARYLIGHTBLACKONE,
-                alignSelf: 'center'
-              }]}
-            >
-              <Text style={style.watchButtonText}>
-                {!comingDate ? 'Coming Soon' : 'Watch Now'}
-              </Text>
-            </PressableButton>
+            {/* Fancy Watch Now Button */}
+            <View style={style.bottomButtonContainer}>
+              {/* Glow effect */}
+              <Animated.View 
+                style={[
+                  style.glowEffect,
+                  {
+                    opacity: glowAnim,
+                    transform: [{ scale: glowAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.2]
+                    })}]
+                  }
+                ]}
+              />
+              
+              {/* Main button with animations */}
+              <Animated.View
+                style={[
+                  style.fancyButtonContainer,
+                  {
+                    transform: [
+                      { scale: Animated.multiply(scaleAnim, pulseAnim) }
+                    ]
+                  }
+                ]}
+              >
+                <LinearGradient
+                  colors={!comingDate 
+                    ? ['#666666', '#888888'] 
+                    : ['#ED9B72', '#7D2537']
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={style.gradientContainer}
+                >
+                  <TouchableOpacity
+                    onPress={onPressEpisode}
+                    disabled={!comingDate}
+                    style={style.fancyButton}
+                    activeOpacity={0.9}
+                  >
+                    <View style={style.buttonContent}>
+                      <SvgIcons 
+                        name="play" 
+                        color={colors.PRIMARYWHITE} 
+                        size={isLargeDevice ? width * .025 : width * .04} 
+                        viewBox="0 0 64 64"
+                        strokeWidth={1.5}
+                      />
+                      <Text style={style.fancyButtonText}>
+                        {!comingDate ? 'Coming Soon' : 'Watch Now'}
+                      </Text>
+                      {comingDate && (
+                        <SvgIcons 
+                          name="arrow-forward" 
+                          color={colors.PRIMARYWHITE} 
+                          size={isLargeDevice ? width * .02 : width * .035} 
+                          viewBox="0 0 64 64"
+                          strokeWidth={1.5}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </Animated.View>
+            </View>
           </View>
         )}
 

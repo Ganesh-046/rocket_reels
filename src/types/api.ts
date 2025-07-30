@@ -74,6 +74,8 @@ export interface ContentItem {
   _id: string;
   title: string;
   contentDetails: ContentDetails;
+  backdropImage?: string;
+  image?: string;
 }
 
 export interface ContentListResponse {

@@ -27,7 +27,16 @@ const dummyEpisodes = [
   { id: '4', title: 'Episode 4: The Challenge', duration: '44 min', image: 'https://via.placeholder.com/300x200/7d2537/ffffff?text=EP4' },
 ];
 
-const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
+interface DetailScreenProps {
+  navigation: any;
+  route: {
+    params: {
+      movieId: string;
+    };
+  };
+}
+
+const DetailScreen: React.FC<DetailScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { movieId } = route.params;
   const { user } = useAuthState();
@@ -38,7 +47,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
 
   // API hooks
   const { data: contentData, isLoading, error, refetch } = useContentDetails(movieId);
-  const { data: seasonData, isLoading: seasonLoading } = useSeasonContent(movieId, selectedSeason);
+  const { data: seasonData, isLoading: seasonLoading } = useSeasonContent(movieId);
 
   const content = contentData?.data;
   const episodes = seasonData?.data || dummyEpisodes;
@@ -214,7 +223,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
         <View style={styles.headerSection}>
           <Image 
             source={{ 
-              uri: content.imageUri || content.image || content.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Movie+Poster' 
+              uri: (content as any)?.imageUri || (content as any)?.image || content?.backdropImage || 'https://via.placeholder.com/400x600/ed9b72/ffffff?text=Movie+Poster' 
             }} 
             style={styles.headerImage} 
           />
@@ -254,16 +263,16 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
 
         {/* Content Info */}
         <View style={styles.contentInfo}>
-          <Text style={styles.contentTitle}>{content.title}</Text>
+          <Text style={styles.contentTitle}>{content?.title || 'Untitled'}</Text>
           <View style={styles.contentMeta}>
-            <Text style={styles.contentYear}>{content.year}</Text>
-            <Text style={styles.contentDuration}>{content.duration}</Text>
+            <Text style={styles.contentYear}>{(content as any)?.year || 'N/A'}</Text>
+            <Text style={styles.contentDuration}>{(content as any)?.duration || 'N/A'}</Text>
             <View style={styles.ratingContainer}>
               <Icon name="star" size={16} color="#FFD700" />
-              <Text style={styles.rating}>{content.rating}</Text>
+              <Text style={styles.rating}>{(content as any)?.rating || 'N/A'}</Text>
             </View>
           </View>
-          <Text style={styles.contentDescription}>{content.description}</Text>
+          <Text style={styles.contentDescription}>{(content as any)?.description || 'No description available'}</Text>
         </View>
 
         {/* Action Buttons */}
@@ -292,7 +301,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
         </View>
 
         {/* Episodes Section (for TV Shows) */}
-        {content.type === 'series' && (
+        {(content as any)?.type === 'series' && (
           <View style={styles.episodesSection}>
             <Text style={styles.sectionTitle}>Episodes</Text>
             <FlatList
@@ -309,7 +318,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
         <View style={styles.castSection}>
           <Text style={styles.sectionTitle}>Cast</Text>
           <FlatList
-            data={content.cast || []}
+            data={(content as any)?.cast || []}
             renderItem={renderCastMember}
             keyExtractor={(item) => item.id}
             horizontal
@@ -322,7 +331,7 @@ const DetailScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, r
         <View style={styles.relatedSection}>
           <Text style={styles.sectionTitle}>You May Also Like</Text>
           <FlatList
-            data={content.related || []}
+            data={(content as any)?.related || []}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.relatedCard}

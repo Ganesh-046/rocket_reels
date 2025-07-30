@@ -176,14 +176,14 @@ class ApiService {
   async getContentList(params: ContentListRequest): Promise<ApiResponse<ContentListResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.LIST, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
 
   async getContentDetails(contentId: string): Promise<ApiResponse<ContentDetailResponse>> {
     const response = await this.api.get(`${ENDPOINTS.CONTENT.DETAILS}/${contentId}`, {
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
@@ -191,7 +191,7 @@ class ApiService {
   async getTrailerList(params: { page?: number; limit?: number }): Promise<ApiResponse<TrailerListResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.TRAILER_LIST, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
@@ -199,7 +199,7 @@ class ApiService {
   async getLatestContent(params: { page?: number; limit?: number }): Promise<ApiResponse<LatestContentResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.NEW_RELEASES, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
@@ -207,7 +207,7 @@ class ApiService {
   async getTopContent(params: { page?: number; limit?: number }): Promise<ApiResponse<TopContentResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.TOP_TEN, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
@@ -215,7 +215,7 @@ class ApiService {
   async getUpcomingContent(params: { page?: number; limit?: number }): Promise<ApiResponse<UpcomingContentResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.UPCOMING, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
@@ -223,14 +223,14 @@ class ApiService {
   async getCustomizedContent(params: { page?: number; limit?: number }): Promise<ApiResponse<CustomizedContentResponse>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.CUSTOMIZED_LIST, { 
       params,
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
 
   async getBannerData(): Promise<ApiResponse<BannerItem[]>> {
     const response = await this.api.get(ENDPOINTS.CONTENT.PROMOTIONAL, {
-      headers: { 'public-request': false }
+      headers: { 'public-request': 'true' }
     });
     return response.data;
   }
