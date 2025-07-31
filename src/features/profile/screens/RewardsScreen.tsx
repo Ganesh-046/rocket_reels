@@ -32,6 +32,7 @@ import {
 } from '../../../hooks/useRewards';
 import { useAuthUser } from '../../../store/auth.store';
 import MMKVStorage from '../../../lib/mmkv';
+import apiService from '../../../services/api.service';
 
 const { width, height } = Dimensions.get('window');
 const isLargeDevice = width > 768;
@@ -170,7 +171,6 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [isAlreadyWatch, setIsAlreadyWatch] = useState('');
   const [isLoginPopUp, setIsLoginPopUp] = useState(false);
   const [isAdLoading, setIsAdLoading] = useState(false);
-  const [adError, setAdError] = useState<string | null>(null);
   
   // Auth and user data
   const user = useAuthUser();
@@ -189,112 +189,119 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const rewardCoinHistory = rewardHistoryData?.data || [];
   const isLoading = !checkInData || !benefitsData || !balanceData;
   
+
+  
   // WORKING AD IMPLEMENTATION FROM OLD PROJECT
   const { isLoaded, isClosed, load, show, isEarnedReward, reward } = useRewardedAd(
     Platform.OS === 'ios' ? AD_UNITS.REWARD_AD_UNIT_IOS : AD_UNITS.REWARD_AD_UNIT
   );
   
-  // Enhanced ad loading with proper error handling
-  const loadAd = useCallback(async () => {
-    try {
-      setIsAdLoading(true);
-      setAdError(null);
-      console.log('[REWARDS DEBUG] Loading ad...');
-      await load();
-      console.log('[REWARDS DEBUG] Ad load called successfully');
-    } catch (error) {
-      console.error('[REWARDS DEBUG] Error loading ad:', error);
-      setAdError('Failed to load ad. Please try again.');
-    } finally {
-      setIsAdLoading(false);
-    }
-  }, [load]);
-  
-  // Enhanced ad showing with proper error handling
-  const showAd = useCallback(async (adType: 'WatchAds' | 'Ads') => {
-    try {
-      setIsAdLoading(true);
-      setAdError(null);
-      setType(adType);
-      
-      if (!isLoaded) {
-        console.log('[REWARDS DEBUG] Ad not loaded, loading first...');
-        await loadAd();
-        // Wait a bit for the ad to load
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
-      if (isLoaded) {
-        console.log('[REWARDS DEBUG] Showing ad...');
-        await show();
-        console.log('[REWARDS DEBUG] Ad show called successfully');
-      } else {
-        setAdError('Ad is still loading. Please wait a moment and try again.');
-      }
-    } catch (error) {
-      console.error('[REWARDS DEBUG] Error showing ad:', error);
-      setAdError('Failed to show ad. Please try again.');
-    } finally {
-      setIsAdLoading(false);
-    }
-  }, [isLoaded, loadAd, show]);
-  
-  // Handle ad reward (WORKING LOGIC FROM OLD PROJECT)
-  useEffect(() => {
-    if (isEarnedReward && reward && userInfo) {
-      if (type === 'WatchAds') {
-        onAdStatus(reward);
-        onGetBalance(userInfo);
-        setIsAlreadyWatch(moment().format('DD-MMM-YYYY'));
-        MMKVStorage.set('alreadyWatch', moment().format('DD-MMM-YYYY'));
-      } else {
-        onAdStatus(reward);
-        onGetBalance(userInfo);
-      }
-    }
-  }, [isEarnedReward, reward, userInfo, type]);
+
   
   // API functions (WORKING LOGIC FROM OLD PROJECT)
   const onAdStatus = async (data: any) => {
     try {
-      console.log('Ad status updated:', data);
-      Alert.alert('Success', 'Ad reward processed successfully!');
-    } catch (error) {
+      const response = await apiService.updateAdStatus({
+        userId: userInfo as string,
+        adId: data?.adId || 'reward_ad',
+        completed: true
+      });
+      
+      if (response.status === 200) {
+        console.log('✅ Ad status updated successfully');
+      }
+    } catch (error: any) {
       console.error('Error updating ad status:', error);
+      
+      // Handle 401 errors like acu_ott
+      if (error?.response?.status === 401) {
+        console.log('⚠️ 401 Unauthorized - Token may be expired');
+        // The API service will automatically clear the token
+      }
     }
   };
 
   const onGetBalance = async (userId: string) => {
     try {
-      console.log('Getting balance for user:', userId);
-      await refetch(); // Refetch rewards data
-    } catch (error) {
+      const response = await apiService.getBalance(userId);
+      
+      if (response.status === 200) {
+        console.log('✅ Balance updated successfully:', response.data);
+        Alert.alert('Success', 'Ad reward processed successfully!');
+        await refetchBalance();
+      }
+    } catch (error: any) {
       console.error('Error getting balance:', error);
+      
+      // Handle 401 errors like acu_ott
+      if (error?.response?.status === 401) {
+        console.log('⚠️ 401 Unauthorized - Token may be expired');
+        // The API service will automatically clear the token
+        // You can add navigation to login screen here if needed
+        Alert.alert(
+          'Session Expired', 
+          'Please log in again to continue.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
     }
   };
   
+  // Handle ad reward (WORKING LOGIC FROM OLD PROJECT)
+  useEffect(() => {
+    if (isEarnedReward && reward && userInfo) {
+      if (type === 'WatchAds') {
+        if (reward) {
+          onAdStatus(reward);
+          onGetBalance(userInfo);
+          setIsAlreadyWatch(moment().format('DD-MMM-YYYY'));
+          MMKVStorage.set('alreadyWatch', moment().format('DD-MMM-YYYY'));
+        }
+      } else {
+        if (reward) {
+          onAdStatus(reward);
+          onGetBalance(userInfo);
+        }
+      }
+    }
+  }, [isEarnedReward, reward, userInfo]);
+  
   // Enhanced ad handlers with proper user validation and error handling
-  const handleShowAd = async () => {
-    if (!userProfileInfo) {
+  const handleShowAd = () => {
+    if (userProfileInfo) {
+      load();
+      if (isLoaded) {
+        setType('WatchAds');
+        show();
+      } else {
+        load();
+        Alert.alert(
+          'Ad Not Available',
+          'Ads are not loaded at the moment. Please try again later.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } else {
       setIsLoginPopUp(true);
-      return;
     }
-    
-    if (isAlreadyWatch === moment().format('DD-MMM-YYYY')) {
-      Alert.alert('Already Completed', 'You have already watched an ad today. Come back tomorrow!');
-      return;
-    }
-    
-    await showAd('WatchAds');
   };
 
-  const handleWatShowAd = async () => {
-    if (!userProfileInfo) {
+  const handleWatShowAd = () => {
+    if (userProfileInfo) {
+      if (isLoaded) {
+        setType('Ads');
+        show();
+      } else {
+        load();
+        Alert.alert(
+          'Ad Not Available',
+          'Ads are not loaded at the moment. Please try again later.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } else {
       setIsLoginPopUp(true);
-      return;
     }
-    
-    await showAd('Ads');
   };
   
   // Check if already watched today
@@ -309,12 +316,17 @@ const RewardsScreen: React.FC<NavigationProps> = ({ navigation }) => {
     }
   }, []);
   
-  // Load ad on mount and when screen is focused
+  // Load ad on mount
   useEffect(() => {
-    if (userProfileInfo) {
-      loadAd();
+    load();
+  }, [load]);
+
+  // Reload ad when closed
+  useEffect(() => {
+    if (isClosed) {
+      load();
     }
-  }, [userProfileInfo, loadAd]);
+  }, [isClosed]);
   
   const refetch = async () => {
     await Promise.all([

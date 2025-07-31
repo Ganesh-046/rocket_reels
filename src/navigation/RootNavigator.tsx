@@ -19,6 +19,11 @@ import { useAuthState, useIsAuthenticated } from '../store/auth.store';
 // Navigation Service
 import { setNavigationRef } from './NavigationService';
 
+// Context Providers
+import { ContentProvider } from '../context/ContentContext';
+import { GenreProvider } from '../context/GenreContext';
+import { DeviceProvider } from '../context/DeviceContext';
+
 import MMKVStorage from '../lib/mmkv';
 
 const Stack = createNativeStackNavigator();
@@ -143,52 +148,58 @@ const RootNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer
-      ref={(ref) => {
-        setNavigationRef(ref);
-      }}
-    >
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-        initialRouteName={routeName}
-      >
-        {/* Onboarding Screen */}
-        <Stack.Screen 
-          name="Onboarding" 
-          component={OnboardingScreen}
-          options={{ gestureEnabled: false }}
-        />
-        
-        {/* Auth Stack */}
-        <Stack.Screen 
-          name="Auth" 
-          component={AuthStack}
-          options={{ gestureEnabled: false }}
-        />
-        
-        {/* Main App */}
-        <Stack.Screen 
-          name="Main" 
-          component={BottomTabNavigator}
-          options={{ gestureEnabled: false }}
-        />
-        
-        {/* Ad Test Screen */}
-        <Stack.Screen 
-          name="AdTest" 
-          component={AdTestScreen}
-          options={{ 
-            headerShown: true,
-            title: 'Ad System Test',
-            headerStyle: { backgroundColor: '#1a1a1a' },
-            headerTintColor: '#ffffff'
-          }}
-        />
-      </Stack.Navigator>
-     
-    </NavigationContainer>
+    <DeviceProvider>
+      <GenreProvider>
+        <ContentProvider>
+          <NavigationContainer
+            ref={(ref) => {
+              setNavigationRef(ref);
+            }}
+          >
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+              }}
+              initialRouteName={routeName}
+            >
+              {/* Onboarding Screen */}
+              <Stack.Screen 
+                name="Onboarding" 
+                component={OnboardingScreen}
+                options={{ gestureEnabled: false }}
+              />
+              
+              {/* Auth Stack */}
+              <Stack.Screen 
+                name="Auth" 
+                component={AuthStack}
+                options={{ gestureEnabled: false }}
+              />
+              
+              {/* Main App */}
+              <Stack.Screen 
+                name="Main" 
+                component={BottomTabNavigator}
+                options={{ gestureEnabled: false }}
+              />
+              
+              {/* Ad Test Screen */}
+              <Stack.Screen 
+                name="AdTest" 
+                component={AdTestScreen}
+                options={{ 
+                  headerShown: true,
+                  title: 'Ad System Test',
+                  headerStyle: { backgroundColor: '#1a1a1a' },
+                  headerTintColor: '#ffffff'
+                }}
+              />
+            </Stack.Navigator>
+           
+          </NavigationContainer>
+        </ContentProvider>
+      </GenreProvider>
+    </DeviceProvider>
   );
 };
 

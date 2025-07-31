@@ -73,6 +73,12 @@ export const APP_CONSTANTS = {
   TERMS_OF_SERVICE_URL: 'https://rocketreels.com/terms',
 } as const;
 
+// Ad Units (WORKING LOGIC FROM ACU_OTT)
+export const AD_UNITS = {
+  REWARD_AD_UNIT: 'ca-app-pub-3940256099942544/5224354917', // Test ad unit
+  REWARD_AD_UNIT_IOS: 'ca-app-pub-3940256099942544/1712485313', // Test ad unit for iOS
+} as const;
+
 // Video Constants
 export const VIDEO_CONSTANTS = {
   QUALITIES: {

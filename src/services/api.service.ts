@@ -4,6 +4,7 @@
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { API_CONFIG, ENDPOINTS } from '../config/api';
+import MMKVStorage from '../lib/mmkv';
 import {
   // Authentication Types
   LoginSignupResponse,
@@ -71,7 +72,6 @@ const SERVICE_CONFIG = {
 
 class ApiService {
   private api: AxiosInstance;
-  private token: string | null = null;
 
   constructor() {
     this.api = axios.create(SERVICE_CONFIG);
@@ -83,12 +83,17 @@ class ApiService {
   // ============================================================================
 
   private setupInterceptors() {
-    // Request interceptor to add auth token
+    // Request interceptor to add auth token (WORKING LOGIC FROM ACU_OTT)
     this.api.interceptors.request.use(
-      (config) => {
-        if (this.token) {
-          config.headers.accesstoken = this.token;
+      async (config) => {
+        // Get token from MMKV storage (like acu_ott)
+        const token = MMKVStorage.get('accessToken');
+        
+        // Add token to headers if available and not a public request
+        if (token && !config.headers['public-request']) {
+          config.headers['accesstoken'] = token;
         }
+        
         return config;
       },
       (error) => {
@@ -96,17 +101,18 @@ class ApiService {
       }
     );
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling (WORKING LOGIC FROM ACU_OTT)
     this.api.interceptors.response.use(
       (response) => {
         return response;
       },
       (error) => {
-        
-        if (error?.response?.status === 401) {
-          // Handle token expiration
-          this.clearToken();
-          // You can add navigation logic here if needed
+        // Handle 401 errors like acu_ott
+        if (error.response?.status === 401) {
+          console.log('⚠️ 401 Unauthorized - Token may be expired');
+          // Clear invalid token
+          MMKVStorage.remove('accessToken');
+          // You can add navigation to login screen here if needed
         }
         return Promise.reject(error);
       }
@@ -114,15 +120,19 @@ class ApiService {
   }
 
   // ============================================================================
-  // TOKEN MANAGEMENT
+  // TOKEN MANAGEMENT (WORKING LOGIC FROM ACU_OTT)
   // ============================================================================
 
   setToken(token: string) {
-    this.token = token;
+    MMKVStorage.set('accessToken', token);
   }
 
   clearToken() {
-    this.token = null;
+    MMKVStorage.remove('accessToken');
+  }
+
+  getToken(): string | null {
+    return MMKVStorage.get('accessToken');
   }
 
   // ============================================================================
@@ -131,16 +141,34 @@ class ApiService {
 
   async login(data: LoginRequest): Promise<ApiResponse<LoginSignupResponse>> {
     const response = await this.api.post(ENDPOINTS.AUTH.LOGIN, data);
+    
+    // Store token on successful login (like acu_ott)
+    if (response.data.status === 200 && response.data.data?.token) {
+      this.setToken(response.data.data.token);
+    }
+    
     return response.data;
   }
 
   async verifyOTP(data: OTPVerificationRequest): Promise<ApiResponse<LoginSignupResponse>> {
     const response = await this.api.post(ENDPOINTS.AUTH.VERIFY_OTP, data);
+    
+    // Store token on successful verification (like acu_ott)
+    if (response.data.status === 200 && response.data.data?.token) {
+      this.setToken(response.data.data.token);
+    }
+    
     return response.data;
   }
 
   async signup(data: SignupRequest): Promise<ApiResponse<LoginSignupResponse>> {
     const response = await this.api.post(ENDPOINTS.AUTH.SIGNUP, data);
+    
+    // Store token on successful signup (like acu_ott)
+    if (response.data.status === 200 && response.data.data?.token) {
+      this.setToken(response.data.data.token);
+    }
+    
     return response.data;
   }
 
@@ -173,10 +201,9 @@ class ApiService {
   // 📺 CONTENT MANAGEMENT APIs
   // ============================================================================
 
-  async getContentList(params: ContentListRequest): Promise<ApiResponse<ContentListResponse>> {
-    const response = await this.api.get(ENDPOINTS.CONTENT.LIST, { 
-      params,
-      headers: { 'public-request': 'true' }
+  async getContentList(adult: boolean, search: string = '', type: string = '', language: string = '', genre: string = '', trgtAud: string = '', page: number = 1, limit: number = 30): Promise<ApiResponse<ContentListResponse>> {
+    const response = await this.api.get(`/content/list?adult=${adult}&title=${search}&page=${page}&type=${type}&trgtAud=${trgtAud}&genre=${genre}&lang=${language}&limit=${limit}`, {
+      headers: { 'public-request': false }
     });
     return response.data;
   }
@@ -196,18 +223,16 @@ class ApiService {
     return response.data;
   }
 
-  async getLatestContent(params: { page?: number; limit?: number }): Promise<ApiResponse<LatestContentResponse>> {
-    const response = await this.api.get(ENDPOINTS.CONTENT.NEW_RELEASES, { 
-      params,
-      headers: { 'public-request': 'true' }
+  async getLatestContent(adult: boolean, page: number = 1, limit: number = 30): Promise<ApiResponse<LatestContentResponse>> {
+    const response = await this.api.get(`/content/newReleases?adult=${adult}&page=${page}&limit=${limit}`, {
+      headers: { 'public-request': false }
     });
     return response.data;
   }
 
-  async getTopContent(params: { page?: number; limit?: number }): Promise<ApiResponse<TopContentResponse>> {
-    const response = await this.api.get(ENDPOINTS.CONTENT.TOP_TEN, { 
-      params,
-      headers: { 'public-request': 'true' }
+  async getTopContent(adult: boolean, page: number = 1, limit: number = 30): Promise<ApiResponse<TopContentResponse>> {
+    const response = await this.api.get(`/content/topTen?adult=${adult}&page=${page}&limit=${limit}`, {
+      headers: { 'public-request': false }
     });
     return response.data;
   }
@@ -229,8 +254,8 @@ class ApiService {
   }
 
   async getBannerData(): Promise<ApiResponse<BannerItem[]>> {
-    const response = await this.api.get(ENDPOINTS.CONTENT.PROMOTIONAL, {
-      headers: { 'public-request': 'true' }
+    const response = await this.api.get('/content/promotional', {
+      headers: { 'public-request': false }
     });
     return response.data;
   }
@@ -415,19 +440,25 @@ class ApiService {
   }
 
   async searchContent(query: string, params: { page?: number; limit?: number }): Promise<ApiResponse<ContentListResponse>> {
-    const response = await this.api.get('/content/search', { 
-      params: { ...params, q: query } 
+    const response = await this.api.get(`/content/list?adult=true&title=${query}&page=${params.page || 1}&type=&trgtAud=&genre=&lang=&limit=${params.limit || 30}`, {
+      headers: { 'public-request': false }
     });
     return response.data;
   }
 
   async getContentByGenre(genre: string, params: { page?: number; limit?: number }): Promise<ApiResponse<ContentListResponse>> {
-    const response = await this.api.get(`/content/genre/${genre}`, { params });
+    const response = await this.api.get(`/content/genre/${genre}`, { 
+      params,
+      headers: { 'public-request': 'true' }
+    });
     return response.data;
   }
 
   async getRelatedContent(contentId: string, params: { page?: number; limit?: number }): Promise<ApiResponse<ContentListResponse>> {
-    const response = await this.api.get(`/content/${contentId}/related`, { params });
+    const response = await this.api.get(`/content/${contentId}/related`, { 
+      params,
+      headers: { 'public-request': 'true' }
+    });
     return response.data;
   }
 

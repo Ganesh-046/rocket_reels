@@ -11,6 +11,9 @@ export type RootStackParamList = {
     episodes: any[];
     initialIndex?: number;
   };
+  Search: {
+    initialQuery?: string;
+  };
   // Profile Screens
   EditProfile: undefined;
   History: undefined;

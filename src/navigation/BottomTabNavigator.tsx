@@ -12,6 +12,7 @@ import EpisodePlayerScreen from '../features/reels/screens/EpisodePlayerScreen';
 import HomeScreen from '../screens/HomeScreen';
 import WebViewScreen from '../screens/WebViewScreen';
 import PromoDetailScreen from '../screens/PromoDetailScreen';
+import SearchScreen from '../screens/SearchScreen';
 
 // Profile Screens
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen';
@@ -50,6 +51,7 @@ export default function BottomTabNavigator() {
       <Stack.Screen name="Shorts" component={Shorts} />
       <Stack.Screen name="PromoDetail" component={PromoDetailScreen} />
       <Stack.Screen name="EpisodePlayer" component={EpisodePlayerScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
       
       {/* Profile Screens */}
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
