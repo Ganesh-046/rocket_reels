@@ -13,12 +13,14 @@ import {
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import { useVideoQualityStore } from '../../store/videoQualityStore';
+
 import { useLikeDislikeContent, useLikedContent } from '../../hooks/useUserInteractions';
 import { useAuthUser } from '../../store/auth.store';
 import { NavigationService } from '../../navigation/NavigationService';
+import { useVideoQualityStore } from '../../store/videoQualityStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
 
 const SimpleInstagramVideoPlayer = ({ episode, isPlaying = true, style, isScrolling = false, onPauseStateChange, externalPauseTrigger, externalSeekTime, onProgress }) => {
   const videoRef = useRef(null);

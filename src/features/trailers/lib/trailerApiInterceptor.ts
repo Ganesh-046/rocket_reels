@@ -1,10 +1,14 @@
-import { API_CONFIG, ENDPOINTS, HTTP_METHODS, CONTENT_TYPES, ERROR_CODES, CACHE_TTL } from '../config/api';
-import { ApiResponse } from '../types/api';
-import MMKVStorage from './mmkv';
+// ============================================================================
+// TRAILER API INTERCEPTOR - COMPLETELY INDEPENDENT AND PORTABLE
+// ============================================================================
+
+import { TRAILER_API_CONFIG, TRAILER_ENDPOINTS, TRAILER_HTTP_METHODS, TRAILER_CONTENT_TYPES, TRAILER_ERROR_CODES, TRAILER_CACHE_TTL } from '../config/trailerApi';
+import { TrailerApiResponse } from '../types/trailerApi';
+import trailerStorage from './trailerStorage';
 import { Platform } from 'react-native';
 
 // Request configuration interface
-interface RequestConfig {
+interface TrailerRequestConfig {
   url: string;
   method: string;
   headers: Record<string, string>;
@@ -16,29 +20,30 @@ interface RequestConfig {
 }
 
 // API Error interface
-interface ApiError {
+interface TrailerApiError {
   status: number;
   message: string;
 }
+
 // API Interceptor Class
-class ApiInterceptor {
+class TrailerApiInterceptor {
   private baseURL: string;
   private timeout: number;
 
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL;
-    this.timeout = API_CONFIG.TIMEOUT;
+    this.baseURL = TRAILER_API_CONFIG.BASE_URL;
+    this.timeout = TRAILER_API_CONFIG.TIMEOUT;
   }
 
   // Generate unique request ID
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `trailer_req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Main request method
   async request<T>(
     endpoint: string,
-    method: string = HTTP_METHODS.GET,
+    method: string = TRAILER_HTTP_METHODS.GET,
     data?: any,
     options: {
       isPublic?: boolean;
@@ -46,31 +51,31 @@ class ApiInterceptor {
       cacheTTL?: number;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
+  ): Promise<TrailerApiResponse<T>> {
     const requestId = this.generateRequestId();
     const startTime = Date.now();
     
     const {
       isPublic = false,
       cacheKey,
-      cacheTTL = CACHE_TTL.USER_DATA,
+      cacheTTL = TRAILER_CACHE_TTL.USER_DATA,
       timeout = this.timeout,
     } = options;
 
     // Check cache first for GET requests
-    if (method === HTTP_METHODS.GET && cacheKey) {
-      const cachedData = MMKVStorage.getCache(cacheKey);
+    if (method === TRAILER_HTTP_METHODS.GET && cacheKey) {
+      const cachedData = await trailerStorage.get(cacheKey);
       if (cachedData) {
         const duration = Date.now() - startTime;
-        console.log('⚡ Cache Hit:', {
+        console.log('⚡ Trailer Cache Hit:', {
           key: cacheKey,
           duration: `${duration}ms`,
         });
-        return {
-          status: 200,
-          data: cachedData,
-          message: 'Data retrieved from cache',
-        };
+              return {
+        status: 200,
+        data: cachedData as T,
+        message: 'Data retrieved from cache',
+      };
       }
     }
 
@@ -80,7 +85,7 @@ class ApiInterceptor {
         timeout,
       });
 
-      console.log('📤 Request:', {
+      console.log('📤 Trailer Request:', {
         method: config.method.toUpperCase(),
         url: config.url,
         headers: config.headers,
@@ -90,7 +95,7 @@ class ApiInterceptor {
       const response = await this.makeRequest<T>(config, requestId);
       const duration = Date.now() - startTime;
 
-      console.log('📥 Response:', {
+      console.log('📥 Trailer Response:', {
         url: config.url,
         status: response.status,
         data: response.data,
@@ -98,20 +103,19 @@ class ApiInterceptor {
       });
 
       // Cache successful GET responses
-      if (method === HTTP_METHODS.GET && cacheKey && response.status) {
-        MMKVStorage.setCache(cacheKey, response.data, cacheTTL);
-        console.log('💾 Cache Set:', { key: cacheKey });
+      if (method === TRAILER_HTTP_METHODS.GET && cacheKey && response.status === 200) {
+        await trailerStorage.set(cacheKey, response.data);
       }
 
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error('❌ Request Error:', {
-        url: `${this.baseURL}${endpoint}`,
-        method: method.toUpperCase(),
-        error: error instanceof Error ? error.message : String(error),
+      console.error('❌ Trailer Request Error:', {
+        requestId,
         duration: `${duration}ms`,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
+
       return this.handleError(error, requestId);
     }
   }
@@ -122,14 +126,14 @@ class ApiInterceptor {
     method: string,
     data?: any,
     options: { isPublic?: boolean; timeout?: number } = {}
-  ): Promise<RequestConfig> {
+  ): Promise<TrailerRequestConfig> {
     const { isPublic = false, timeout = this.timeout } = options;
     const url = `${this.baseURL}${endpoint}`;
-    const token = MMKVStorage.getToken();
+    const token = await trailerStorage.get('auth_token') as string;
 
     const headers: Record<string, string> = {
-      'Content-Type': CONTENT_TYPES.JSON,
-      'Accept': CONTENT_TYPES.JSON,
+      'Content-Type': TRAILER_CONTENT_TYPES.JSON,
+      'Accept': TRAILER_CONTENT_TYPES.JSON,
     };
 
     // Add public-request header for public endpoints
@@ -144,9 +148,9 @@ class ApiInterceptor {
 
     // Add device information
     headers['device-type'] = Platform.OS;
-    headers['app-version'] = '1.0.0'; // You can get this from app config
+    headers['app-version'] = '1.0.0';
 
-    const config: RequestConfig = {
+    const config: TrailerRequestConfig = {
       url,
       method,
       headers,
@@ -154,9 +158,9 @@ class ApiInterceptor {
     };
 
     // Add body for non-GET requests
-    if (method !== HTTP_METHODS.GET && data) {
+    if (method !== TRAILER_HTTP_METHODS.GET && data) {
       if (data instanceof FormData) {
-        config.headers['Content-Type'] = CONTENT_TYPES.FORM_DATA;
+        config.headers['Content-Type'] = TRAILER_CONTENT_TYPES.FORM_DATA;
         config.body = data;
       } else {
         config.body = JSON.stringify(data);
@@ -167,12 +171,12 @@ class ApiInterceptor {
   }
 
   // Make the actual HTTP request
-  private async makeRequest<T>(config: RequestConfig, requestId: string): Promise<ApiResponse<T>> {
+  private async makeRequest<T>(config: TrailerRequestConfig, requestId: string): Promise<TrailerApiResponse<T>> {
     const { method, headers, body, timeout } = config;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log('⏰ Request Timeout:', { timeout: `${timeout}ms` });
+      console.log('⏰ Trailer Request Timeout:', { timeout: `${timeout}ms` });
       controller.abort();
     }, timeout);
 
@@ -222,82 +226,93 @@ class ApiInterceptor {
   }
 
   // Handle errors
-  private handleError(error: any, requestId: string): ApiResponse<any> {
-    let apiError: ApiError = {
-      status: 500,
-      message: 'An unexpected error occurred',
-    };
+  private handleError(error: any, requestId: string): TrailerApiResponse<any> {
+    console.error('❌ Trailer API Error:', {
+      requestId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
 
     if (error.name === 'AbortError') {
-      apiError = {
-        status: 408,
+      return {
+        status: TRAILER_ERROR_CODES.SERVICE_UNAVAILABLE,
         message: 'Request timeout',
+        data: null,
       };
-    } else if (error.message?.includes('HTTP')) {
-      const statusMatch = error.message.match(/HTTP (\d+)/);
-      const status = statusMatch ? parseInt(statusMatch[1]) : 500;
+    }
 
-      apiError = {
-        status,
-        message: this.getErrorMessage(status),
+    if (error.message?.includes('HTTP 401')) {
+      this.handleUnauthorized();
+      return {
+        status: TRAILER_ERROR_CODES.UNAUTHORIZED,
+        message: 'Unauthorized access',
+        data: null,
       };
+    }
 
-      // Handle specific error codes
-      if (status === ERROR_CODES.UNAUTHORIZED) {
-        this.handleUnauthorized();
-      }
-    } else if (error.message) {
-      apiError.message = error.message;
+    if (error.message?.includes('HTTP 403')) {
+      return {
+        status: TRAILER_ERROR_CODES.FORBIDDEN,
+        message: 'Access forbidden',
+        data: null,
+      };
+    }
+
+    if (error.message?.includes('HTTP 404')) {
+      return {
+        status: TRAILER_ERROR_CODES.NOT_FOUND,
+        message: 'Resource not found',
+        data: null,
+      };
+    }
+
+    if (error.message?.includes('HTTP 500')) {
+      return {
+        status: TRAILER_ERROR_CODES.INTERNAL_SERVER_ERROR,
+        message: 'Internal server error',
+        data: null,
+      };
     }
 
     return {
-      status: 500,
+      status: TRAILER_ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Network error',
       data: null,
-      message: apiError.message,
     };
   }
 
   // Get error message based on status code
   private getErrorMessage(status: number): string {
     switch (status) {
-      case 400:
-        return 'Bad request';
-      case 401:
+      case TRAILER_ERROR_CODES.UNAUTHORIZED:
         return 'Unauthorized access';
-      case 403:
+      case TRAILER_ERROR_CODES.FORBIDDEN:
         return 'Access forbidden';
-      case 404:
+      case TRAILER_ERROR_CODES.NOT_FOUND:
         return 'Resource not found';
-      case 408:
-        return 'Request timeout';
-      case 500:
+      case TRAILER_ERROR_CODES.INTERNAL_SERVER_ERROR:
         return 'Internal server error';
-      case 502:
+      case TRAILER_ERROR_CODES.BAD_GATEWAY:
         return 'Bad gateway';
-      case 503:
+      case TRAILER_ERROR_CODES.SERVICE_UNAVAILABLE:
         return 'Service unavailable';
       default:
-        return 'An error occurred';
+        return 'Unknown error';
     }
   }
 
   // Handle unauthorized access
   private handleUnauthorized(): void {
-    // Clear auth data and redirect to login
-    MMKVStorage.removeAuthData();
-    MMKVStorage.removeToken();
-    MMKVStorage.removeUser();
-    
-    // You can emit an event here to notify the app about logout
-    // EventEmitter.emit('LOGOUT');
+    console.log('🔐 Trailer API: Unauthorized access detected');
+    // Clear auth token
+    trailerStorage.remove('auth_token');
   }
 
-  // Retry mechanism
+  // Retry request with exponential backoff
   private async retryRequest<T>(
-    requestFn: () => Promise<ApiResponse<T>>,
-    retries: number = API_CONFIG.RETRY_ATTEMPTS,
-    delay: number = API_CONFIG.RETRY_DELAY
-  ): Promise<ApiResponse<T>> {
+    requestFn: () => Promise<TrailerApiResponse<T>>,
+    retries: number = TRAILER_API_CONFIG.RETRY_ATTEMPTS,
+    delay: number = TRAILER_API_CONFIG.RETRY_DELAY
+  ): Promise<TrailerApiResponse<T>> {
     try {
       return await requestFn();
     } catch (error) {
@@ -309,12 +324,12 @@ class ApiInterceptor {
     }
   }
 
-  // Utility delay function
+  // Utility function to delay execution
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Public methods for different HTTP methods
+  // GET request
   async get<T>(
     endpoint: string,
     options: {
@@ -323,10 +338,11 @@ class ApiInterceptor {
       cacheTTL?: number;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, HTTP_METHODS.GET, undefined, options);
+  ): Promise<TrailerApiResponse<T>> {
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.GET, undefined, options);
   }
 
+  // POST request
   async post<T>(
     endpoint: string,
     data?: any,
@@ -334,10 +350,11 @@ class ApiInterceptor {
       isPublic?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, HTTP_METHODS.POST, data, options);
+  ): Promise<TrailerApiResponse<T>> {
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.POST, data, options);
   }
 
+  // PUT request
   async put<T>(
     endpoint: string,
     data?: any,
@@ -345,20 +362,22 @@ class ApiInterceptor {
       isPublic?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, HTTP_METHODS.PUT, data, options);
+  ): Promise<TrailerApiResponse<T>> {
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.PUT, data, options);
   }
 
+  // DELETE request
   async delete<T>(
     endpoint: string,
     options: {
       isPublic?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, HTTP_METHODS.DELETE, undefined, options);
+  ): Promise<TrailerApiResponse<T>> {
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.DELETE, undefined, options);
   }
 
+  // PATCH request
   async patch<T>(
     endpoint: string,
     data?: any,
@@ -366,11 +385,11 @@ class ApiInterceptor {
       isPublic?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, HTTP_METHODS.PATCH, data, options);
+  ): Promise<TrailerApiResponse<T>> {
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.PATCH, data, options);
   }
 
-  // Upload file method
+  // Upload file
   async uploadFile<T>(
     endpoint: string,
     file: any,
@@ -378,25 +397,25 @@ class ApiInterceptor {
       isPublic?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ApiResponse<T>> {
+  ): Promise<TrailerApiResponse<T>> {
     const formData = new FormData();
     formData.append('file', file);
-
-    return this.request<T>(endpoint, HTTP_METHODS.POST, formData, options);
+    return this.request<T>(endpoint, TRAILER_HTTP_METHODS.POST, formData, options);
   }
 
   // Clear cache
-  clearCache(): void {
-    MMKVStorage.clearCache();
+  async clearCache(): Promise<void> {
+    await trailerStorage.clear();
+    console.log('🗑️ Trailer cache cleared');
   }
 
   // Get cache size
-  getCacheSize(): number {
-    return MMKVStorage.getSize();
+  async getCacheSize(): Promise<number> {
+    // For now, return 0 since trailerStorage doesn't have getAllKeys
+    return 0;
   }
 }
 
-// Create singleton instance
-const apiInterceptor = new ApiInterceptor();
-
-export default apiInterceptor; 
+// Create and export singleton instance
+const trailerApiInterceptor = new TrailerApiInterceptor();
+export default trailerApiInterceptor; 

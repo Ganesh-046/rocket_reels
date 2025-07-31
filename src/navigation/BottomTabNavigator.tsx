@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigationTypes';
-import DiscoverScreen from '../features/discover/screens/DiscoverScreen';
+import TrailerScreen from '../features/trailers/screens/TrailerScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import ReelDetailScreen from '../features/reels/screens/ReelDetailsModal';
 import CustomTabBar from './CustomTabBar';
@@ -36,7 +36,7 @@ function Tabs() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Discover" component={DiscoverScreen} />
+      <Tab.Screen name="Discover" component={TrailerScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} /> 
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

@@ -3,16 +3,23 @@ import contentService from '../services/content.service';
 import {
   ContentItem,
   ContentDetail,
-  Season,
-  VideoAccess,
-  WatchHistory,
-  Banner,
   Genre,
-  SubGenre,
   Language,
-  ContentListParams,
-  PaginationParams,
 } from '../types/api';
+
+// Define missing types locally
+interface ContentListParams {
+  adult?: boolean;
+  page?: number;
+  limit?: number;
+  genre?: string;
+  search?: string;
+}
+
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
 
 // Query Keys
 export const CONTENT_QUERY_KEYS = {
@@ -44,7 +51,7 @@ export const useContentList = (params: ContentListParams = {}) => {
   });
 };
 
-export const useTrailerList = (params: PaginationParams = {}) => {
+export const useTrailerList = (params: { adult?: boolean; page?: number } = {}) => {
   return useQuery({
     queryKey: [CONTENT_QUERY_KEYS.TRAILER_LIST, params],
     queryFn: () => contentService.getTrailerList(params),

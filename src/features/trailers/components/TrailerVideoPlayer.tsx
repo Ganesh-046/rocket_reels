@@ -10,8 +10,8 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import SimpleInstagramVideoPlayer from './SimpleInstagramVideoPlayer';
-import { useVideoQualityStore } from '../../store/videoQualityStore';
+import SimpleInstagramVideoPlayer from '../../../components/VideoPlayer/SimpleInstagramVideoPlayer';
+import { useTrailerVideoQualityStore } from '../store/trailerVideoQualityStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isLargeDevice = screenWidth > 768;
@@ -52,7 +52,7 @@ const TrailerVideoPlayer: React.FC<TrailerVideoPlayerProps> = ({
     const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Get current video quality
-    const { currentQuality } = useVideoQualityStore();
+    const { currentQuality } = useTrailerVideoQualityStore();
 
     // Quality indicator text
     const getQualityText = () => {

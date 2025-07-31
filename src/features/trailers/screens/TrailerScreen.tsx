@@ -1,3 +1,7 @@
+// ============================================================================
+// TRAILER SCREEN - COMPLETELY INDEPENDENT AND PORTABLE
+// ============================================================================
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Dimensions,
@@ -16,15 +20,14 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import LinearGradient from 'react-native-linear-gradient';
 
 // Hooks and Services
-import { useTrailerList } from '../../../hooks/useContent';
-import useTheme from '../../../hooks/useTheme';
-import useThemedStyles from '../../../hooks/useThemedStyles';
+import { useTrailerList } from '../hooks/useTrailers';
+import { useTrailerTheme, useTrailerThemedStyles } from '../hooks/useTrailerTheme';
 
 // Components
-import ActivityLoader from '../../../components/common/ActivityLoader';
-import EmptyMessage from '../../../components/common/EmptyMessage';
-// @ts-ignore
-import TrailerVideoPlayer from '../../../components/VideoPlayer/TrailerVideoPlayer';
+import TrailerActivityLoader from '../components/TrailerActivityLoader';
+import TrailerEmptyMessage from '../components/TrailerEmptyMessage';
+
+import TrailerVideoPlayer from '../components/TrailerVideoPlayer';
 
 // Constants
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -49,21 +52,25 @@ const createSafeGradientColors = (colors: any) => {
   ].filter(color => color && typeof color === 'string');
 };
 
-interface DiscoverScreenProps {
+interface TrailerScreenProps {
   navigation: any;
 }
 
-const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
+const TrailerScreen: React.FC<TrailerScreenProps> = ({ navigation }) => {
+  // ============================================================================
+  // 🎯 SCREEN STATE
+  // ============================================================================
+
   // Theme and styling
-  const { theme: { colors } } = useTheme();
+  const { theme: { colors } } = useTrailerTheme();
   const safeColors = useMemo(() => getSafeColors(colors), [colors]);
   const gradientColors = useMemo(() => createSafeGradientColors(colors), [colors]);
-  const style = useThemedStyles(styles);
+  const style = useTrailerThemedStyles(styles);
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
-  // Refs - matching ForYouScreen.js pattern
+  // Refs - matching DiscoverScreen pattern
   const flatListRef = useRef<FlatList<any>>(null);
   const controllerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingMore = useRef(false);
@@ -73,7 +80,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
   const lastApiCallRef = useRef<Record<string, number>>({});
   const apiCallCountRef = useRef(0);
 
-  // State management - matching ForYouScreen.js pattern
+  // State management - matching DiscoverScreen pattern
   const [state, setState] = useState({
     playPause: true,
     currentIndex: 0,
@@ -86,30 +93,9 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
   // Local refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Calculate screen dimensions - Full screen height for trailer videos
-  const screenDimensions = useMemo(() => {
-    const screenHeight = Dimensions.get('screen').height;
-    const statusBarHeight = StatusBar.currentHeight || 0;
-    
-    // Use full screen height minus status bar for videos
-    const fullScreenHeight = screenHeight - statusBarHeight;
-    
-    return {
-      platformHeight: fullScreenHeight,
-      marginBottom: 0, // No margin bottom for full screen
-      insets
-    };
-  }, [screenHeight, insets]);
-
-  // Create a stable setState function with better state management
-  const updateState = useCallback((updater: any) => {
-    console.log('🎯 DiscoverScreen updateState called:', updater);
-    setState(prevState => {
-      const newState = typeof updater === 'function' ? updater(prevState) : updater;
-      console.log('🎯 DiscoverScreen state update:', { prevState, newState });
-      return { ...prevState, ...newState };
-    });
-  }, []);
+  // ============================================================================
+  // 🎮 TRAILER HOOKS
+  // ============================================================================
 
   // API Queries
   const {
@@ -119,12 +105,28 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     refetch: refetchTrailers,
   } = useTrailerList({ adult: true, page: 1 });
 
+  // ============================================================================
+  // 📊 PROCESSED DATA
+  // ============================================================================
+
   // Process trailer data - convert to episode format for SimpleInstagramVideoPlayer
   const processedTrailerData = useMemo(() => {
-    const trailerItems = trailerData?.data?.trailers;
+    console.log('🎬 TrailerScreen - Raw trailerData:', JSON.stringify(trailerData, null, 2));
+    
+    // Try different data paths to find the correct structure
+    const trailerItems = (trailerData as any)?.data?.trailers || 
+                        (trailerData as any)?.data?.data?.trailers || 
+                        (trailerData as any)?.trailers ||
+                        (trailerData as any)?.data ||
+                        (trailerData as any)?.data?.data;
+    
+    console.log('🎬 TrailerScreen - Extracted trailerItems:', trailerItems);
     
     if (!trailerItems || !Array.isArray(trailerItems) || trailerItems.length === 0) {
-      return [];
+          console.log('🎬 TrailerScreen - No trailer items found');
+    console.log('🎬 TrailerScreen - trailerData type:', typeof trailerData);
+    console.log('🎬 TrailerScreen - trailerData keys:', trailerData ? Object.keys(trailerData) : 'null');
+    return [];
     }
 
     const processed = trailerItems
@@ -207,7 +209,44 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     return processed;
   }, [trailerData, trailerLoading, trailerError]);
 
-  // Initialize data - matching ForYouScreen.js pattern
+  // ============================================================================
+  // 📱 SCREEN DIMENSIONS
+  // ============================================================================
+
+  // Calculate screen dimensions - Full screen height for trailer videos
+  const screenDimensions = useMemo(() => {
+    const screenHeight = Dimensions.get('screen').height;
+    const statusBarHeight = StatusBar.currentHeight || 0;
+    
+    // Use full screen height minus status bar for videos
+    const fullScreenHeight = screenHeight - statusBarHeight;
+    
+    return {
+      platformHeight: fullScreenHeight,
+      marginBottom: 0, // No margin bottom for full screen
+      insets
+    };
+  }, [screenHeight, insets]);
+
+  // ============================================================================
+  // 🔧 UTILITY FUNCTIONS
+  // ============================================================================
+
+  // Create a stable setState function with better state management
+  const updateState = useCallback((updater: any) => {
+    console.log('🎯 TrailerScreen updateState called:', updater);
+    setState(prevState => {
+      const newState = typeof updater === 'function' ? updater(prevState) : updater;
+      console.log('🎯 TrailerScreen state update:', { prevState, newState });
+      return { ...prevState, ...newState };
+    });
+  }, []);
+
+  // ============================================================================
+  // 🎯 INITIALIZATION
+  // ============================================================================
+
+  // Initialize data - matching DiscoverScreen pattern
   useEffect(() => {
     const initializeApp = async () => {
       if (!hasInitialized.current && isFocused) {
@@ -265,6 +304,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     };
   }, [isFocused, refetchTrailers, updateState]);
 
+  // ============================================================================
+  // 🎮 FOCUS MANAGEMENT
+  // ============================================================================
+
   // Add proper screen focus management to pause videos when screen loses focus
   useFocusEffect(
     React.useCallback(() => {
@@ -290,12 +333,16 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
         // Reset scrolling state
         isScrolling.current = false;
         
-        console.log('DiscoverScreen: Videos paused on screen blur');
+        console.log('TrailerScreen: Videos paused on screen blur');
       };
     }, [isFocused, state.playPause, updateState])
   );
 
-  // Video navigation - matching ForYouScreen.js pattern
+  // ============================================================================
+  // 🎬 VIDEO NAVIGATION
+  // ============================================================================
+
+  // Video navigation
   const onEnd = useCallback(() => {
     // Don't auto-advance if user is actively scrolling
     if (isScrolling.current) return;
@@ -332,7 +379,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     }
   }, [state.currentIndex, processedTrailerData.length, updateState]);
 
-  // Viewable items changed - matching ForYouScreen.js pattern
+  // Viewable items changed
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const index = viewableItems[0].index;
@@ -353,7 +400,11 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     waitForInteraction: false,
   }), []);
 
-  // Scroll handling - matching ForYouScreen.js pattern
+  // ============================================================================
+  // 📜 SCROLL HANDLING
+  // ============================================================================
+
+  // Scroll handling
   const handleScroll = useCallback((event: any) => {
     updateState({ controller: true });
 
@@ -381,6 +432,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     }, 200);
   }, [updateState]);
 
+  // ============================================================================
+  // 🔄 REFRESH HANDLING
+  // ============================================================================
+
   // Refresh
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -400,6 +455,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
       setIsRefreshing(false);
     }
   }, [refetchTrailers, processedTrailerData.length, updateState]);
+
+  // ============================================================================
+  // 🎮 USER INTERACTIONS
+  // ============================================================================
 
   // User interactions
   const handleLike = useCallback(async (trailerId: string) => {
@@ -441,6 +500,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     });
   }, [navigation]);
 
+  // ============================================================================
+  // 🎨 LAYOUT AND RENDERING
+  // ============================================================================
+
   // Layout and rendering
   const getItemLayout = useMemo(() => (data: any, index: number) => ({
     length: screenDimensions.platformHeight,
@@ -448,12 +511,12 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     index,
   }), [screenDimensions.platformHeight]);
 
-    const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     const shouldPlay = isFocused && state.playPause && state.currentIndex === index && !isScrolling.current;
     
     // Debug logging
     if (index === state.currentIndex) {
-      console.log('🎯 DiscoverScreen renderItem:', {
+      console.log('🎯 TrailerScreen renderItem:', {
         index,
         itemTitle: item?.title,
         isFocused,
@@ -510,12 +573,20 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     });
   }, []);
 
+  // ============================================================================
+  // 🔄 REFRESH STATE MANAGEMENT
+  // ============================================================================
+
   // Reset refresh state when screen loses focus
   useEffect(() => {
     if (!isFocused) {
       setIsRefreshing(false);
     }
   }, [isFocused]);
+
+  // ============================================================================
+  // 🎨 LOADING AND ERROR STATES
+  // ============================================================================
 
   // Loading state
   if (trailerLoading && !processedTrailerData.length) {
@@ -525,7 +596,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
           style={{ flex: 0, height: screenDimensions.insets.top }}
           colors={gradientColors}
         />
-        <ActivityLoader />
+        <TrailerActivityLoader />
       </View>
     );
   }
@@ -534,7 +605,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
   const ListEmptyComponent = () => {
     if (trailerError) {
       return (
-        <EmptyMessage
+        <TrailerEmptyMessage
           title={'Error loading trailers'}
           subtitle={trailerError.message || 'Please try again'}
           mainContainer={{ height: screenHeight / 1.1 }}
@@ -544,7 +615,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
     }
 
     return (
-      <EmptyMessage
+      <TrailerEmptyMessage
         title={'No trailers available'}
         subtitle={'Pull to refresh or try again later'}
         mainContainer={{ height: screenHeight / 1.1 }}
@@ -552,6 +623,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ navigation }) => {
       />
     );
   };
+
+  // ============================================================================
+  // 🎬 MAIN RENDER
+  // ============================================================================
 
   return (
     <View style={style.container}>
@@ -613,4 +688,4 @@ const styles = (theme: any) => StyleSheet.create({
   },
 });
 
-export default DiscoverScreen;
+export default TrailerScreen; 

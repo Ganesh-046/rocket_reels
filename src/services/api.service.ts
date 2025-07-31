@@ -91,7 +91,7 @@ class ApiService {
         
         // Add token to headers if available and not a public request
         if (token && !config.headers['public-request']) {
-          config.headers['accesstoken'] = token;
+          config.headers.accesstoken = token;
         }
         
         return config;
