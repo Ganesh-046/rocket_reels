@@ -27,7 +27,7 @@ import Animated, {
 import ReelCard from '../components/ReelCard';
 import PerformanceMonitor from '../../../components/common/PerformanceMonitor';
 import { prefetchManager } from '../../../utils/prefetch';
-import { performanceMonitor } from '../../../utils/performanceMonitor';
+import performanceMonitor from '../../../utils/performanceMonitor';
 import { useVideoStore } from '../../../store/videoStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');

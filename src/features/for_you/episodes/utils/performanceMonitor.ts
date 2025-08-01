@@ -1,9 +1,9 @@
 // ============================================================================
-// 🎬 PERFORMANCE MONITOR - COMPLETELY INDEPENDENT AND PORTABLE
+// 🎬 EPISODE PERFORMANCE MONITOR - COMPLETELY INDEPENDENT AND PORTABLE
 // ============================================================================
 
 import { Platform } from 'react-native';
-import { enhancedVideoCache } from './enhancedVideoCache';
+import enhancedVideoCache from './instagramOptimizedVideoCache';
 
 // Performance metrics interface
 interface PerformanceMetrics {

@@ -19,7 +19,7 @@ import { useVideoStore } from '../../../store/videoStore';
 import { instagramVideoCache } from '../../../utils/instagramOptimizedVideoCache';
 import { advancedVideoOptimizer } from '../../../utils/advancedVideoOptimizer';
 import { hardwareAcceleratedScroll } from '../../../utils/hardwareAcceleratedScroll';
-import { performanceMonitor } from '../../../utils/performanceMonitor';
+import performanceMonitor from '../../../utils/performanceMonitor';
 import { useVideoTransition } from '../../../hooks/useVideoTransition';
 import { useAdvancedPerformance } from '../../../hooks/useAdvancedPerformance';
 import { instagramStyleVideoPreloader } from '../../../utils/instagramStyleVideoPreloader';

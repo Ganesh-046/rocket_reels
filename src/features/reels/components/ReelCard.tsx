@@ -22,7 +22,7 @@ import FastImage from 'react-native-fast-image';
 import Video from 'react-native-video';
 import { useVideoStore, useVideoState, useIsVideoPlaying, useVideoProgress, useVideoDuration } from '../../../store/videoStore';
 import { prefetchManager } from '../../../utils/prefetch';
-import { performanceMonitor } from '../../../utils/performanceMonitor';
+import performanceMonitor from '../../../utils/performanceMonitor';
 import { useVideoTransition } from '../../../hooks/useVideoTransition';
 import { instagramVideoCache } from '../../../utils/instagramOptimizedVideoCache';
 import { instagramPerformanceOptimizer } from '../../../utils/instagramPerformanceOptimizer';

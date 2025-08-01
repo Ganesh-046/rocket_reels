@@ -1,5 +1,5 @@
 import { enhancedVideoCache } from './enhancedVideoCache';
-import { performanceMonitor } from './performanceMonitor';
+import performanceMonitor from './performanceMonitor';
 
 interface PrefetchItem {
   id: string;

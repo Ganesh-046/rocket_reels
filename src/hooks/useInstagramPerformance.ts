@@ -29,6 +29,7 @@ export const useInstagramPerformance = (videoId: string) => {
     isTrackingRef.current = true;
     loadStartTimeRef.current = Date.now();
     
+    console.log('🎬 useInstagramPerformance: Started tracking for video:', videoId);
   }, [videoId]);
 
   // End tracking and calculate metrics
@@ -49,6 +50,8 @@ export const useInstagramPerformance = (videoId: string) => {
     
     isTrackingRef.current = false;
     
+    console.log('🎬 useInstagramPerformance: Performance metrics:', {
+      videoId,
       loadTime: `${loadTime}ms`,
       cacheHitRate: `${metricsRef.current.cacheHitRate.toFixed(1)}%`,
       memoryUsage: `${(stats.memoryUsage / 1024 / 1024).toFixed(2)}MB`,

@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { InteractionManager, Platform } from 'react-native';
 import { useVideoStore } from '../store/videoStore';
 import { prefetchManager } from '../utils/prefetch';
-import { performanceMonitor } from '../utils/performanceMonitor';
+import performanceMonitor from '../utils/performanceMonitor';
 
 interface PerformanceConfig {
   enablePrefetch: boolean;
